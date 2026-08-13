@@ -1,0 +1,23 @@
+[package]
+name = "sidestage-bindings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "UniFFI boundary exposing sidestage-core to Kotlin and Swift."
+
+[lib]
+name = "sidestage"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+sidestage-core = { path = "../sidestage-core" }
+uniffi = { workspace = true, features = ["tokio"] }
+
+[build-dependencies]
+uniffi = { workspace = true, features = ["build"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"

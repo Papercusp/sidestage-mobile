@@ -1,0 +1,12 @@
+{
+  "color": {
+    "primary-button-background": { "$value": "{color.cyan.400}", "$type": "color" },
+    "primary-button-text": { "$value": "#061525", "$type": "color" },
+    "live-indicator": { "$value": "{color.emerald.400}", "$type": "color" },
+    "auction-leader": { "$value": "{color.violet.400}", "$type": "color" },
+    "bid-warning": { "$value": "{color.amber.400}", "$type": "color" }
+  },
+  "size": {
+    "minimum-touch-target": { "$value": "44px", "$type": "dimension" }
+  }
+}

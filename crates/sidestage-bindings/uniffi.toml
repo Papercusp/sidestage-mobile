@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+
+[bindings.kotlin]
+cdylib_name = "sidestage"
+package_name = "uniffi.sidestage"
+
+[bindings.swift]
+cdylib_name = "sidestage"

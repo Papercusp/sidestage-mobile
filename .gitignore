@@ -1,0 +1,36 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Generated UniFFI/native artifacts
+/android/app/src/main/jniLibs/
+/android/app/src/main/kotlin/uniffi/
+/ios/SideStageCore/*
+!/ios/SideStageCore/.gitkeep
+/ios/SideStageCore.xcframework/
+
+# Android Studio / Gradle
+/android/.idea/
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+
+# iOS / Xcode
+/ios/build/
+/ios/*.xcodeproj/xcuserdata/
+/ios/*.xcworkspace/xcuserdata/
+
+# Secrets
+.env
+.env.*
+!.env.example
+/android/app/google-services.json
+*.p12
+*.mobileprovision
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

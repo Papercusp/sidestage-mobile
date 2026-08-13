@@ -1,0 +1,18 @@
+{
+  "color": {
+    "background": { "$value": "{color.navy.900}", "$type": "color" },
+    "surface": { "$value": "#12223EB8", "$type": "color", "$description": "Web --surface rgba(18,34,62,.72)." },
+    "surface-raised": { "$value": "#1C365ED1", "$type": "color", "$description": "Web --surface-raised rgba(28,54,94,.82)." },
+    "stage": { "$value": "{color.navy.950}", "$type": "color" },
+    "border": { "$value": "#9BBFEB2E", "$type": "color", "$description": "Web --border rgba(155,191,235,.18)." },
+    "text": { "$value": "{color.slate.200}", "$type": "color" },
+    "text-muted": { "$value": "{color.slate.400}", "$type": "color" },
+    "text-faint": { "$value": "{color.slate.500}", "$type": "color" },
+    "accent": { "$value": "{color.cyan.400}", "$type": "color" },
+    "accent-strong": { "$value": "{color.cyan.200}", "$type": "color" },
+    "violet": { "$value": "{color.violet.400}", "$type": "color" },
+    "warning": { "$value": "{color.amber.400}", "$type": "color" },
+    "success": { "$value": "{color.emerald.400}", "$type": "color" },
+    "danger": { "$value": "{color.rose.400}", "$type": "color" }
+  }
+}

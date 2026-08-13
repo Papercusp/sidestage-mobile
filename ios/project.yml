@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: MIT
+# XcodeGen specification for the SideStage buyer app.
+#
+# Run order:
+#   1. `make ios` from the repository root (creates SideStageCore.xcframework
+#      plus the generated UniFFI Swift source under ios/SideStageCore).
+#   2. `xcodegen generate --spec ios/project.yml` from the repository root
+#      (creates ios/SideStage.xcodeproj).
+#   3. Open ios/SideStage.xcodeproj and run the SideStage scheme.
+#
+# SideStageCore is the native Swift boundary around the single shared Rust core.
+# Keep catalog, realtime, cart, and checkout behavior in sidestage-core rather
+# than duplicating it in the SwiftUI application target.
+
+name: SideStage
+options:
+  bundleIdPrefix: com.sidestage
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+configs:
+  Debug: debug
+  Release: release
+
+targets:
+  SideStageCore:
+    type: framework
+    platform: iOS
+    sources:
+      - path: SideStageCore
+        excludes:
+          - .gitkeep
+    dependencies:
+      - framework: SideStageCore.xcframework
+        embed: false
+        codeSign: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile.core
+        PRODUCT_MODULE_NAME: SideStageCore
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+        FRAMEWORK_SEARCH_PATHS: $(SRCROOT)
+
+  SideStage:
+    type: application
+    platform: iOS
+    sources:
+      - path: SideStage/Sources
+      - path: SideStage/Resources
+        optional: true
+    dependencies:
+      - target: SideStageCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile
+        PRODUCT_NAME: SideStage
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: SideStage
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        CODE_SIGN_STYLE: Automatic
+        SUPPORTS_MACCATALYST: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+
+  SideStageTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: SideStageTests
+    dependencies:
+      - target: SideStage
+      - target: SideStageCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile.tests
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/SideStage.app/SideStage
+
+  SideStageUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SideStageUITests
+    dependencies:
+      - target: SideStage
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile.uitests
+        TEST_TARGET_NAME: SideStage
+
+schemes:
+  SideStage:
+    build:
+      targets:
+        SideStageCore: all
+        SideStage: all
+        SideStageTests: [test]
+        SideStageUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - SideStageTests
+        - SideStageUITests
+    archive:
+      config: Release

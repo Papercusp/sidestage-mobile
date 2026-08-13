@@ -1,0 +1,34 @@
+{
+  "$schema": "https://design-tokens.org/dtcg/format/draft-1.json",
+  "_meta": {
+    "description": "SideStage mobile primitives seeded from apps/web/src/styles.css on 2026-08-13."
+  },
+  "color": {
+    "navy": {
+      "950": { "$value": "#050B16", "$type": "color" },
+      "900": { "$value": "#0B1428", "$type": "color" },
+      "800": { "$value": "#12223E", "$type": "color" },
+      "700": { "$value": "#1C365E", "$type": "color" }
+    },
+    "slate": {
+      "200": { "$value": "#EDF5FF", "$type": "color" },
+      "400": { "$value": "#8EA5C5", "$type": "color" },
+      "500": { "$value": "#7188A9", "$type": "color" }
+    },
+    "cyan": {
+      "200": { "$value": "#A0ECFF", "$type": "color" },
+      "400": { "$value": "#62D8FF", "$type": "color" }
+    },
+    "violet": { "400": { "$value": "#A78BFA", "$type": "color" } },
+    "amber": { "400": { "$value": "#F6C76F", "$type": "color" } },
+    "emerald": { "400": { "$value": "#74E0AD", "$type": "color" } },
+    "rose": { "400": { "$value": "#FB7185", "$type": "color" } }
+  },
+  "size": {
+    "control": {
+      "compact": { "$value": "32px", "$type": "dimension" },
+      "console": { "$value": "36px", "$type": "dimension" },
+      "roomy": { "$value": "44px", "$type": "dimension" }
+    }
+  }
+}
