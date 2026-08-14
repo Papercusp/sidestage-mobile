@@ -169,6 +169,67 @@ dictionary CheckoutOrder {
     ShippingRate? selected_shipping_rate;
 };
 
+/// One origin represented in the unified Buyer order history.
+enum OrderSource {
+    "Checkout",
+    "Auction",
+    "Offer",
+};
+
+enum OrderStatus {
+    "Pending",
+    "Paid",
+    "Failed",
+    "Accepted",
+    "Expired",
+    "Cancelled",
+};
+
+dictionary OrderLine {
+    string product_id;
+    string title;
+    u32 quantity;
+    i64 unit_price_cents;
+    string? image_url;
+};
+
+enum OrderEvidenceKind {
+    "Condition",
+};
+
+dictionary OrderVideoSnapshot {
+    string id;
+    string event_id;
+    string event_title;
+    string? seller_name;
+    string product_id;
+    string product_title;
+    string? thumbnail_url;
+    u64? start_ms;
+    u64? end_ms;
+    string? preview_text;
+    OrderEvidenceKind? evidence_kind;
+    string? evidence_label;
+};
+
+/// Checkout, auction, and offer history as published by the unified API.
+dictionary Order {
+    string id;
+    OrderSource source;
+    string buyer_id;
+    string event_id;
+    string event_title;
+    string? seller_name;
+    OrderStatus status;
+    string created_at;
+    i64 subtotal_cents;
+    i64 shipping_cents;
+    i64 total_cents;
+    Currency currency;
+    sequence<OrderLine> items;
+    sequence<OrderVideoSnapshot> video_snapshots;
+};
+
 dictionary CreateCheckoutSessionRequest {
     string cart_id;
     string event_id;
@@ -335,6 +396,10 @@ interface SideStageClient {
 
     [Throws=ApiError, Async]
     sequence<CheckoutOrder> orders();
+
+    /// Unified checkout, auction, and offer history for the current Buyer.
+    [Throws=ApiError, Async]
+    sequence<Order> order_history();
 
     /// Start streaming the live event: transcript, on-deck product, auction.
     [Throws=ApiError]

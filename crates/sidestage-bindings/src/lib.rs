@@ -490,6 +490,154 @@ impl From<core::CheckoutOrder> for CheckoutOrder {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OrderSource {
+    Checkout,
+    Auction,
+    Offer,
+}
+
+impl From<core::OrderSource> for OrderSource {
+    fn from(source: core::OrderSource) -> Self {
+        match source {
+            core::OrderSource::Checkout => Self::Checkout,
+            core::OrderSource::Auction => Self::Auction,
+            core::OrderSource::Offer => Self::Offer,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OrderStatus {
+    Pending,
+    Paid,
+    Failed,
+    Accepted,
+    Expired,
+    Cancelled,
+}
+
+impl From<core::OrderStatus> for OrderStatus {
+    fn from(status: core::OrderStatus) -> Self {
+        match status {
+            core::OrderStatus::Pending => Self::Pending,
+            core::OrderStatus::Paid => Self::Paid,
+            core::OrderStatus::Failed => Self::Failed,
+            core::OrderStatus::Accepted => Self::Accepted,
+            core::OrderStatus::Expired => Self::Expired,
+            core::OrderStatus::Cancelled => Self::Cancelled,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrderLine {
+    pub product_id: String,
+    pub title: String,
+    pub quantity: u32,
+    pub unit_price_cents: i64,
+    pub image_url: Option<String>,
+}
+
+impl From<core::OrderLine> for OrderLine {
+    fn from(line: core::OrderLine) -> Self {
+        Self {
+            product_id: line.product_id,
+            title: line.title,
+            quantity: line.quantity,
+            unit_price_cents: line.unit_price_cents,
+            image_url: line.image_url,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OrderEvidenceKind {
+    Condition,
+}
+
+impl From<core::OrderEvidenceKind> for OrderEvidenceKind {
+    fn from(kind: core::OrderEvidenceKind) -> Self {
+        match kind {
+            core::OrderEvidenceKind::Condition => Self::Condition,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrderVideoSnapshot {
+    pub id: String,
+    pub event_id: String,
+    pub event_title: String,
+    pub seller_name: Option<String>,
+    pub product_id: String,
+    pub product_title: String,
+    pub thumbnail_url: Option<String>,
+    pub start_ms: Option<u64>,
+    pub end_ms: Option<u64>,
+    pub preview_text: Option<String>,
+    pub evidence_kind: Option<OrderEvidenceKind>,
+    pub evidence_label: Option<String>,
+}
+
+impl From<core::OrderVideoSnapshot> for OrderVideoSnapshot {
+    fn from(snapshot: core::OrderVideoSnapshot) -> Self {
+        Self {
+            id: snapshot.id,
+            event_id: snapshot.event_id,
+            event_title: snapshot.event_title,
+            seller_name: snapshot.seller_name,
+            product_id: snapshot.product_id,
+            product_title: snapshot.product_title,
+            thumbnail_url: snapshot.thumbnail_url,
+            start_ms: snapshot.start_ms,
+            end_ms: snapshot.end_ms,
+            preview_text: snapshot.preview_text,
+            evidence_kind: snapshot.evidence_kind.map(Into::into),
+            evidence_label: snapshot.evidence_label,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Order {
+    pub id: String,
+    pub source: OrderSource,
+    pub buyer_id: String,
+    pub event_id: String,
+    pub event_title: String,
+    pub seller_name: Option<String>,
+    pub status: OrderStatus,
+    pub created_at: String,
+    pub subtotal_cents: i64,
+    pub shipping_cents: i64,
+    pub total_cents: i64,
+    pub currency: Currency,
+    pub items: Vec<OrderLine>,
+    pub video_snapshots: Vec<OrderVideoSnapshot>,
+}
+
+impl From<core::Order> for Order {
+    fn from(order: core::Order) -> Self {
+        Self {
+            id: order.id,
+            source: order.source.into(),
+            buyer_id: order.buyer_id,
+            event_id: order.event_id,
+            event_title: order.event_title,
+            seller_name: order.seller_name,
+            status: order.status.into(),
+            created_at: order.created_at,
+            subtotal_cents: order.subtotal_cents,
+            shipping_cents: order.shipping_cents,
+            total_cents: order.total_cents,
+            currency: order.currency.into(),
+            items: order.items.into_iter().map(Into::into).collect(),
+            video_snapshots: order.video_snapshots.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateCheckoutSessionRequest {
     pub cart_id: String,
@@ -983,6 +1131,26 @@ impl SideStageClient {
         Ok(orders.into_iter().map(Into::into).collect())
     }
 
+    /// Fetch the API's bounded unified order snapshot for the current Buyer.
+    ///
+    /// The core owns the page-size ceiling. Asking for the largest possible
+    /// page lets it clamp to that ceiling so this collection-style foreign API
+    /// returns the whole server snapshot without duplicating the limit here.
+    pub async fn order_history(&self) -> Result<Vec<Order>, ApiError> {
+        let client = self.client();
+        let page = self
+            .on_runtime("order history", async move {
+                client
+                    .order_history(&core::OrderPageRequest {
+                        cursor: None,
+                        page_size: Some(u32::MAX),
+                    })
+                    .await
+            })
+            .await??;
+        Ok(page.orders.into_iter().map(Into::into).collect())
+    }
+
     /// Start streaming a live event.
     ///
     /// The core spawns its stream/poll task on the ambient runtime, so this
@@ -1262,6 +1430,10 @@ mod tests {
             "orders"
         );
         assert!(
+            block_on_foreign_executor(client.order_history()).is_err(),
+            "order_history"
+        );
+        assert!(
             block_on_foreign_executor(client.place_bid(PlaceBidRequest {
                 auction_id: "auction-1".into(),
                 bidder_id: "buyer-1".into(),
@@ -1271,6 +1443,66 @@ mod tests {
             .is_err(),
             "place_bid"
         );
+    }
+
+    #[test]
+    fn unified_order_history_decodes_the_api_payload_across_the_boundary() {
+        use serde_json::json;
+        use wiremock::{
+            matchers::{method, path, query_param},
+            Mock, MockServer, ResponseTemplate,
+        };
+
+        let server_runtime = tokio::runtime::Runtime::new().expect("wiremock runtime");
+        let server = server_runtime.block_on(MockServer::start());
+        server_runtime.block_on(async {
+            Mock::given(method("GET"))
+                .and(path("/checkout/orders"))
+                .and(query_param("buyerId", "buyer-ff39f82b"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                    "orders": [{
+                        "id": "order_a48d06cf-6c67-4375-8f25-7664243597b0",
+                        "source": "checkout",
+                        "buyerId": "buyer-ff39f82b",
+                        "eventId": "sunday-drop",
+                        "eventTitle": "Sunday vintage drop",
+                        "sellerName": "Marsh & Co Vintage",
+                        "status": "paid",
+                        "createdAt": "2026-08-14T21:50:00.000Z",
+                        "subtotalCents": 19900,
+                        "shippingCents": 1005,
+                        "totalCents": 20905,
+                        "currency": "USD",
+                        "items": [{
+                            "productId": "cloud-anc-headphones",
+                            "title": "Cloud ANC Headphones",
+                            "quantity": 1,
+                            "unitPriceCents": 19900,
+                            "imageUrl": null
+                        }],
+                        "videoSnapshots": []
+                    }]
+                })))
+                .mount(&server)
+                .await;
+        });
+
+        let client = SideStageClient::new(server.uri()).expect("client");
+        client
+            .set_session(Some(ApiSession {
+                buyer_id: "buyer-ff39f82b".into(),
+                access_token: None,
+            }))
+            .expect("session");
+
+        let orders = block_on_foreign_executor(client.order_history()).expect("unified orders");
+
+        assert_eq!(orders.len(), 1);
+        assert_eq!(orders[0].id, "order_a48d06cf-6c67-4375-8f25-7664243597b0");
+        assert_eq!(orders[0].source, OrderSource::Checkout);
+        assert_eq!(orders[0].status, OrderStatus::Paid);
+        assert_eq!(orders[0].items[0].unit_price_cents, 19_900);
+        assert_eq!(orders[0].total_cents, 20_905);
     }
 
     #[test]

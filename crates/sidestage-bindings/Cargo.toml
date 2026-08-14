@@ -21,6 +21,9 @@ uniffi = { workspace = true, features = ["tokio"] }
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }
 
+[dev-dependencies]
+wiremock = { workspace = true }
+
 [[bin]]
 name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"

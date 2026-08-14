@@ -24,6 +24,7 @@ import uniffi.sidestage.CreateCheckoutSessionRequest
 import uniffi.sidestage.LiveEventSync
 import uniffi.sidestage.LiveEventUpdate
 import uniffi.sidestage.LiveSyncStatus
+import uniffi.sidestage.OrderStatus
 import uniffi.sidestage.PlaceBidRequest
 import uniffi.sidestage.ShippingAddress
 import uniffi.sidestage.ShippingRatesRequest
@@ -249,7 +250,7 @@ private class UniFfiBuyerOrdersGateway(
 ) : BuyerOrdersGateway {
     override suspend fun orders(): List<BuyerOrder> =
         try {
-            client.orders().map { it.toBuyerHistoryOrder() }
+            client.orderHistory().map { it.toBuyerHistoryOrder() }
         } catch (error: ApiException) {
             throw IllegalStateException("Orders are unavailable right now.", error)
         }
@@ -264,13 +265,13 @@ private fun uniffi.sidestage.CheckoutOrder.toBuyerCheckoutOrder(): BuyerCheckout
         status = status,
     )
 
-private fun uniffi.sidestage.CheckoutOrder.toBuyerHistoryOrder(): BuyerOrder =
+internal fun uniffi.sidestage.Order.toBuyerHistoryOrder(): BuyerOrder =
     BuyerOrder(
         id = id,
         buyerId = buyerId,
         eventId = eventId,
         createdAt = createdAt,
-        status = status,
+        status = status.toApiValue(),
         subtotalCents = subtotalCents,
         shippingCents = shippingCents,
         totalCents = totalCents,
@@ -279,22 +280,23 @@ private fun uniffi.sidestage.CheckoutOrder.toBuyerHistoryOrder(): BuyerOrder =
                 BuyerOrderLine(
                     productId = it.productId,
                     title = it.title,
-                    priceCents = it.priceCents,
+                    priceCents = it.unitPriceCents,
                     quantity = it.quantity.toInt(),
                 )
             },
-        shippingService =
-            selectedShippingRate?.let { rate ->
-                listOf(rate.carrier, rate.service).filter(String::isNotBlank).joinToString(" ").ifEmpty { null }
-            },
-        shippingAddress =
-            shippingAddress?.let { address ->
-                listOf(address.line1, address.line2, address.city, address.state, address.postalCode)
-                    .filterNotNull()
-                    .filter(String::isNotBlank)
-                    .joinToString(", ")
-            },
+        shippingService = null,
+        shippingAddress = null,
     )
+
+private fun OrderStatus.toApiValue(): String =
+    when (this) {
+        OrderStatus.PENDING -> "pending"
+        OrderStatus.PAID -> "paid"
+        OrderStatus.FAILED -> "failed"
+        OrderStatus.ACCEPTED -> "accepted"
+        OrderStatus.EXPIRED -> "expired"
+        OrderStatus.CANCELLED -> "cancelled"
+    }
 
 private suspend fun <T> checkoutCall(block: suspend () -> T): T =
     try {
