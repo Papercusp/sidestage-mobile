@@ -95,6 +95,42 @@ class BuyerCheckoutContractTest {
         assertTrue(message.contains("cart changed"))
     }
 
+    @Test
+    fun `expired cart hold is cleared after the server confirms the cart is empty`() =
+        runBlocking {
+            val gateway = FakeCheckoutGateway(expireBeforeShippingRates = true)
+            val session = BuyerSessionState().apply { cartId = "cart-1" }
+            val controller = BuyerCheckoutController("event-1", CheckoutStep.CART, gateway, session)
+
+            controller.loadCart()
+            controller.continueFromCart()
+            controller.updateDraft(completeAddress())
+            controller.findShippingRates()
+
+            assertEquals(CheckoutStep.CART, controller.state.step)
+            assertNull(controller.state.cart)
+            assertNull(session.cartId)
+            assertEquals(BuyerCheckoutPresentation.CART_HOLD_EXPIRED_MESSAGE, controller.state.errorMessage)
+        }
+
+    @Test
+    fun `a different shipping validation error does not discard a live cart`() =
+        runBlocking {
+            val gateway = FakeCheckoutGateway(rejectShippingRates = true)
+            val session = BuyerSessionState().apply { cartId = "cart-1" }
+            val controller = BuyerCheckoutController("event-1", CheckoutStep.CART, gateway, session)
+
+            controller.loadCart()
+            controller.continueFromCart()
+            controller.updateDraft(completeAddress())
+            controller.findShippingRates()
+
+            assertEquals(CheckoutStep.ADDRESS, controller.state.step)
+            assertEquals("cart-1", controller.state.cart?.id)
+            assertEquals("cart-1", session.cartId)
+            assertEquals("Checkout could not be completed.", controller.state.errorMessage)
+        }
+
     private fun completeAddress() =
         CheckoutAddressDraft(
             email = "buyer@example.com",
@@ -121,6 +157,8 @@ class BuyerCheckoutContractTest {
 private class FakeCheckoutGateway(
     private val paymentStatus: String = "paid",
     private val orderStatus: String = "paid",
+    private val expireBeforeShippingRates: Boolean = false,
+    private val rejectShippingRates: Boolean = false,
 ) : BuyerCheckoutGateway {
     override val maxCartQuantity = 99
     private var cart =
@@ -130,7 +168,12 @@ private class FakeCheckoutGateway(
             subtotalCents = 2_000L,
         )
 
-    override suspend fun cart(cartId: String): BuyerCart = cart
+    override suspend fun cart(cartId: String): BuyerCart =
+        if (expireBeforeShippingRates && shippingRatesRequested) {
+            cart.copy(items = emptyList(), subtotalCents = 0L)
+        } else {
+            cart
+        }
 
     override suspend fun setCartQuantity(
         cartId: String,
@@ -152,7 +195,11 @@ private class FakeCheckoutGateway(
     override suspend fun shippingRates(
         cartId: String,
         address: CheckoutAddress,
-    ): List<BuyerShippingRate> = listOf(BuyerShippingRate("rate-1", "USPS", "Priority", 895L, 2))
+    ): List<BuyerShippingRate> {
+        shippingRatesRequested = true
+        if (expireBeforeShippingRates || rejectShippingRates) throw BuyerCheckoutGatewayException(status = 400)
+        return listOf(BuyerShippingRate("rate-1", "USPS", "Priority", 895L, 2))
+    }
 
     override suspend fun createCheckoutSession(
         cartId: String,
@@ -174,4 +221,6 @@ private class FakeCheckoutGateway(
             totalCents = 3_000L,
             status = status,
         )
+
+    private var shippingRatesRequested = false
 }

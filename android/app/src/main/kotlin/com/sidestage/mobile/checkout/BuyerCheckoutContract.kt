@@ -167,6 +167,7 @@ data class BuyerCheckoutUiState(
 
 object BuyerCheckoutPresentation {
     const val INCOMPLETE_ADDRESS_MESSAGE = "Email, name, and a complete shipping address are required."
+    const val CART_HOLD_EXPIRED_MESSAGE = "Your cart hold expired. Add the item again to continue checkout."
     const val NO_RATES_MESSAGE = "No live shipping rates are available for this address."
     const val SQUARE_NEEDS_CONFIGURATION_TITLE = "Square sandbox needs configuration."
     const val SQUARE_NEEDS_CONFIGURATION_DETAIL =
@@ -315,7 +316,13 @@ class BuyerCheckoutController(
         val cart = state.cart
         if (cart == null || cart.items.isEmpty()) return fail("Your cart is empty.")
         busy {
-            val rates = activeGateway.shippingRates(cart.id, address)
+            val rates =
+                try {
+                    activeGateway.shippingRates(cart.id, address)
+                } catch (error: BuyerCheckoutGatewayException) {
+                    if (recoverExpiredCart(activeGateway, cart, error)) return@busy
+                    throw error
+                }
             val prior = state.selectedRateId?.takeIf { id -> rates.any { it.id == id } }
             state = state.copy(rates = rates, selectedRateId = prior ?: rates.firstOrNull()?.id)
             goTo(CheckoutStep.SHIPPING)
@@ -368,6 +375,34 @@ class BuyerCheckoutController(
 
     private fun stateUpdate(cart: BuyerCart?) {
         state = state.copy(cart = cart, errorMessage = null)
+    }
+
+    private suspend fun recoverExpiredCart(
+        activeGateway: BuyerCheckoutGateway,
+        cart: BuyerCart,
+        error: BuyerCheckoutGatewayException,
+    ): Boolean {
+        if (error.status != 400) return false
+        val refreshed =
+            try {
+                activeGateway.cart(cart.id)
+            } catch (_: Exception) {
+                return false
+            }
+        if (refreshed != null && refreshed.items.isNotEmpty()) return false
+
+        session.cartId = null
+        state =
+            state.copy(
+                step = CheckoutStep.CART,
+                cart = null,
+                rates = emptyList(),
+                selectedRateId = null,
+                checkout = null,
+                completedOrder = null,
+                errorMessage = BuyerCheckoutPresentation.CART_HOLD_EXPIRED_MESSAGE,
+            )
+        return true
     }
 
     private fun fail(message: String) {
