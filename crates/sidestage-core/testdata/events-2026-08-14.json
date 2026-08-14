@@ -1,0 +1,18 @@
+{
+  "_fixture": {
+    "comment": "Sample captured from the live GET /events response on 2026-08-14; the endpoint wrapper and first event are preserved."
+  },
+  "events": [
+    {
+      "eventId": "sunday-drop",
+      "title": "Sunday vintage drop",
+      "sellerId": "seller-marsh",
+      "sellerName": "Marsh & Co Vintage",
+      "status": "live",
+      "startsAt": "2026-08-14T05:42:55.383Z",
+      "endedAt": null,
+      "thumbnailUrl": "https://placehold.co/400x400/D62B1F/FFF8EF/png?text=Vintage",
+      "viewers": 2
+    }
+  ]
+}

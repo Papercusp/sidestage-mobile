@@ -12,15 +12,18 @@ edition = "2021"
 license = "MIT"
 authors = ["SideStage Mobile <avi@storewolf.com>"]
 repository = "https://github.com/Papercusp/sidestage-mobile"
-rust-version = "1.80"
+rust-version = "1.88"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 thiserror = "1"
 tracing = "0.1"
 uniffi = { version = "0.28", features = ["cli"] }
+wiremock = "0.6"
 
 [profile.release]
 opt-level = "s"

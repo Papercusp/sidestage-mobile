@@ -3,4 +3,345 @@
 namespace sidestage {
     /// Returns the version of sidestage-core baked into this build.
     string version();
+
+    /// The pre-filled bid amount for a given current price. Shared with the
+    /// web buyer panel so every surface suggests the same next bid.
+    i64 suggested_bid_cents(i64 current_price_cents);
+
+    /// The smallest amount the API will accept above a given current price.
+    i64 minimum_next_bid_cents(i64 current_price_cents);
+
+    /// The inclusive per-product cart ceiling. Shared so a native quantity
+    /// stepper bounds itself from the core instead of hardcoding the limit.
+    u32 max_cart_quantity();
+};
+
+[Error]
+interface ApiError {
+    InvalidBaseUrl(string detail);
+    InvalidSession();
+    EventNotFound(string event_id);
+    Transport(string detail);
+    Http(u16 status, string detail);
+    Decode(string detail);
+};
+
+dictionary ApiSession {
+    string buyer_id;
+    string? access_token;
+};
+
+enum EventStatus {
+    "Live",
+    "Scheduled",
+    "Ended",
+};
+
+dictionary EventSummary {
+    string event_id;
+    string title;
+    string seller_id;
+    string seller_name;
+    EventStatus status;
+    string? starts_at;
+    string? ended_at;
+    string? thumbnail_url;
+    u64 viewers;
+};
+
+enum CatalogAvailability {
+    "All",
+    "InStock",
+};
+
+dictionary CatalogSearch {
+    string? q;
+    string? product_type;
+    CatalogAvailability? availability;
+    u32? page;
+    u32? page_size;
+};
+
+dictionary CatalogVariant {
+    string id;
+    string? group_id;
+    string title;
+    string brand;
+    string product_type;
+    string sku;
+    string? condition;
+    i32? handling_days;
+    i64 price_cents;
+    i64 available_qty;
+    string? image_url;
+    string? description;
+};
+
+dictionary CatalogPage {
+    sequence<CatalogVariant> rows;
+    u32 page;
+    u32 page_size;
+    u64 total;
+    boolean total_is_floor;
+};
+
+enum Currency {
+    "Usd",
+};
+
+dictionary CartItem {
+    string product_id;
+    string title;
+    i64 price_cents;
+    u32 quantity;
+    string? image_url;
+};
+
+dictionary Cart {
+    string id;
+    Currency currency;
+    sequence<CartItem> items;
+    i64 subtotal_cents;
+    string updated_at;
+};
+
+dictionary AddCartItemRequest {
+    string? cart_id;
+    string product_id;
+    string title;
+    i64 price_cents;
+    u32 quantity;
+    string? image_url;
+};
+
+dictionary ShippingAddress {
+    string name;
+    string line1;
+    string? line2;
+    string city;
+    string state;
+    string postal_code;
+    string country;
+    string? phone;
+};
+
+dictionary ShippingRatesRequest {
+    string cart_id;
+    ShippingAddress address;
+};
+
+dictionary ShippingRate {
+    string id;
+    string carrier;
+    string service;
+    i64 total_cents;
+    u32? delivery_days;
+    u32 parcel_count;
+    string quoted_at;
+};
+
+dictionary PaymentSession {
+    string provider;
+    string mode;
+    string status;
+    string? app_id;
+    string? location_id;
+    string order_id;
+    i64 amount_cents;
+    Currency currency;
+};
+
+dictionary CheckoutOrder {
+    string id;
+    string cart_id;
+    string buyer_id;
+    string event_id;
+    string? email;
+    i64 subtotal_cents;
+    i64 shipping_cents;
+    i64 total_cents;
+    Currency currency;
+    string status;
+    string created_at;
+    sequence<CartItem> items;
+    PaymentSession payment_session;
+    ShippingAddress? shipping_address;
+    ShippingRate? selected_shipping_rate;
+};
+
+dictionary CreateCheckoutSessionRequest {
+    string cart_id;
+    string event_id;
+    string? email;
+    string? name;
+    ShippingAddress shipping_address;
+    string shipping_rate_id;
+};
+
+dictionary CheckoutSessionResponse {
+    CheckoutOrder order;
+    PaymentSession session;
+};
+
+dictionary ConfirmCheckoutRequest {
+    string order_id;
+    string source_id;
+};
+
+dictionary PaymentResult {
+    string status;
+    string? transaction_id;
+    string? error_message;
+};
+
+dictionary CheckoutConfirmation {
+    CheckoutOrder order;
+    PaymentResult payment;
+};
+
+enum ChatRole {
+    "Buyer",
+    "Seller",
+};
+
+dictionary EventTranscriptEntry {
+    string id;
+    string event_id;
+    string user_id;
+    string display_name;
+    ChatRole role;
+    string text;
+    string created_at;
+    /// Seller-copilot grounding, as the raw JSON the API published.
+    string? grounding_json;
+};
+
+enum AuctionStatus {
+    "Active",
+    "Closed",
+};
+
+dictionary AuctionBid {
+    string id;
+    string bidder_id;
+    string? display_name;
+    i64 amount_cents;
+    string created_at;
+};
+
+dictionary LiveAuction {
+    string id;
+    string event_id;
+    string event_item_id;
+    string product_id;
+    u32 quantity;
+    i64 starting_price_cents;
+    i64 current_price_cents;
+    AuctionStatus status;
+    string started_at;
+    string ends_at;
+    string? closed_at;
+    /// Highest first, then oldest-first on a tie — the server's own ordering.
+    sequence<AuctionBid> bids;
+    /// The winning order, as the raw JSON the API published.
+    string? winner_order_json;
+};
+
+dictionary LiveEventSnapshot {
+    string event_id;
+    sequence<EventTranscriptEntry> transcript;
+    CatalogVariant? on_deck_product;
+    LiveAuction? auction;
+};
+
+/// Where the live connection currently stands. `Polling` means the stream
+/// dropped and the shell is on the REST fallback until `retry_in_ms` elapses.
+[Enum]
+interface LiveSyncStatus {
+    Connecting();
+    Live();
+    Polling(u64 retry_in_ms);
+};
+
+/// One update from the live event feed. A shell renders `Snapshot` and treats
+/// `Error` as transient — the sync keeps retrying on its own.
+[Enum]
+interface LiveEventUpdate {
+    Status(LiveSyncStatus status);
+    Snapshot(LiveEventSnapshot snapshot);
+    Error(string message);
+};
+
+/// A running live-event subscription. Call `next_event` in a loop until it
+/// returns null; call `stop` to stop early. Dropping it also stops the feed.
+interface LiveEventSync {
+    [Async]
+    LiveEventUpdate? next_event();
+
+    void stop();
+};
+
+dictionary PlaceBidRequest {
+    string auction_id;
+    string bidder_id;
+    string? display_name;
+    i64 amount_cents;
+};
+
+interface SideStageClient {
+    [Throws=ApiError]
+    constructor(string base_url);
+
+    [Throws=ApiError]
+    void set_session(ApiSession? session);
+
+    ApiSession? session();
+
+    [Throws=ApiError, Async]
+    sequence<EventSummary> events();
+
+    [Throws=ApiError, Async]
+    EventSummary event(string event_id);
+
+    [Throws=ApiError, Async]
+    CatalogPage catalog(CatalogSearch search);
+
+    [Throws=ApiError, Async]
+    sequence<string> product_types();
+
+    [Throws=ApiError, Async]
+    CatalogVariant product(string product_id);
+
+    [Throws=ApiError, Async]
+    Cart? cart(string cart_id);
+
+    [Throws=ApiError, Async]
+    Cart add_cart_item(AddCartItemRequest input);
+
+    [Throws=ApiError, Async]
+    Cart set_cart_quantity(string cart_id, string product_id, u32 quantity);
+
+    [Throws=ApiError, Async]
+    Cart remove_cart_item(string cart_id, string product_id);
+
+    [Throws=ApiError, Async]
+    sequence<ShippingRate> shipping_rates(ShippingRatesRequest input);
+
+    [Throws=ApiError, Async]
+    CheckoutSessionResponse create_checkout_session(CreateCheckoutSessionRequest input);
+
+    [Throws=ApiError, Async]
+    CheckoutConfirmation confirm_checkout(ConfirmCheckoutRequest input);
+
+    [Throws=ApiError, Async]
+    sequence<CheckoutOrder> orders();
+
+    /// Start streaming the live event: transcript, on-deck product, auction.
+    [Throws=ApiError]
+    LiveEventSync live_event_sync(string event_id);
+
+    /// Bid on a live auction. HTTP 409 means the auction closed or the amount
+    /// no longer clears the current price.
+    [Throws=ApiError, Async]
+    LiveAuction place_bid(PlaceBidRequest input);
 };

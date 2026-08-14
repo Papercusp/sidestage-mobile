@@ -1,0 +1,15 @@
+{
+  "_fixture": {
+    "comment": "Response captured from live POST /shipping/rates on 2026-08-14; rates was empty because EASYPOST_API_KEY was not configured. representativeRate follows the server's populated AggregatedRate contract and is not claimed as a live response."
+  },
+  "rates": [],
+  "representativeRate": {
+    "id": "USPS:Priority",
+    "carrier": "USPS",
+    "service": "Priority",
+    "totalCents": 895,
+    "deliveryDays": 3,
+    "parcelCount": 1,
+    "quotedAt": "2026-08-14T12:01:30.000Z"
+  }
+}

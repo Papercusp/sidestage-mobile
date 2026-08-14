@@ -1,0 +1,18 @@
+{
+  "_fixture": {
+    "comment": "Exact cart captured from live POST /cart/items and GET /cart/:id responses on 2026-08-14; the temporary item was deleted after capture."
+  },
+  "id": "278e33de-f6eb-4ae8-88e6-313001885413",
+  "currency": "USD",
+  "items": [
+    {
+      "productId": "a000hlk3w1jw50m1i6hdrzip",
+      "title": "Nortel Networks - Nortel Passport 8630GBR - Switch - Gigabit En + 30 X Sfp (empt",
+      "priceCents": 4999,
+      "quantity": 1,
+      "imageUrl": null
+    }
+  ],
+  "subtotalCents": 4999,
+  "updatedAt": "2026-08-14T08:13:06.422Z"
+}

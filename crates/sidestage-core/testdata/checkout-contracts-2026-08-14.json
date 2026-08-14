@@ -1,0 +1,119 @@
+{
+  "_fixture": {
+    "comment": "Request bodies captured against live POST /cart/items and POST /shipping/rates on 2026-08-14, plus representative POST /checkout/sessions and POST /checkout/confirm contracts. Checkout could not be captured live because /shipping/rates returned no selectable rates with EasyPost unconfigured."
+  },
+  "apiSession": {
+    "buyerId": "buyer-mobile",
+    "accessToken": null
+  },
+  "catalogSearch": {
+    "q": "Nortel",
+    "productType": "NETWORK_SWITCH",
+    "availability": "in-stock",
+    "page": 1,
+    "pageSize": 1
+  },
+  "addCartItemRequest": {
+    "cartId": null,
+    "productId": "a000hlk3w1jw50m1i6hdrzip",
+    "title": "Nortel Networks - Nortel Passport 8630GBR - Switch - Gigabit En + 30 X Sfp (empt",
+    "priceCents": 4999,
+    "quantity": 1,
+    "imageUrl": null
+  },
+  "shippingRatesRequest": {
+    "cartId": "278e33de-f6eb-4ae8-88e6-313001885413",
+    "address": {
+      "name": "Fixture Buyer",
+      "line1": "1 Main St",
+      "city": "Brooklyn",
+      "state": "NY",
+      "postalCode": "11201",
+      "country": "US"
+    }
+  },
+  "createCheckoutSessionRequest": {
+    "cartId": "278e33de-f6eb-4ae8-88e6-313001885413",
+    "eventId": "sunday-drop",
+    "email": "buyer@example.test",
+    "name": "Fixture Buyer",
+    "shippingAddress": {
+      "name": "Fixture Buyer",
+      "line1": "1 Main St",
+      "city": "Brooklyn",
+      "state": "NY",
+      "postalCode": "11201",
+      "country": "US"
+    },
+    "shippingRateId": "USPS:Priority"
+  },
+  "paymentSession": {
+    "provider": "square",
+    "mode": "sandbox",
+    "status": "needs-configuration",
+    "appId": null,
+    "locationId": null,
+    "orderId": "order-fixture",
+    "amountCents": 5894,
+    "currency": "USD"
+  },
+  "checkoutOrder": {
+    "id": "order-fixture",
+    "cartId": "278e33de-f6eb-4ae8-88e6-313001885413",
+    "buyerId": "buyer-mobile",
+    "eventId": "sunday-drop",
+    "email": "buyer@example.test",
+    "name": "Fixture Buyer",
+    "subtotalCents": 4999,
+    "shippingCents": 895,
+    "totalCents": 5894,
+    "currency": "USD",
+    "status": "pending",
+    "createdAt": "2026-08-14T12:02:00.000Z",
+    "cartUpdatedAt": "2026-08-14T08:13:06.422Z",
+    "items": [
+      {
+        "productId": "a000hlk3w1jw50m1i6hdrzip",
+        "title": "Nortel Networks - Nortel Passport 8630GBR - Switch - Gigabit En + 30 X Sfp (empt",
+        "priceCents": 4999,
+        "quantity": 1,
+        "imageUrl": null
+      }
+    ],
+    "paymentSession": {
+      "provider": "square",
+      "mode": "sandbox",
+      "status": "needs-configuration",
+      "appId": null,
+      "locationId": null,
+      "orderId": "order-fixture",
+      "amountCents": 5894,
+      "currency": "USD"
+    },
+    "shippingAddress": {
+      "name": "Fixture Buyer",
+      "line1": "1 Main St",
+      "city": "Brooklyn",
+      "state": "NY",
+      "postalCode": "11201",
+      "country": "US"
+    },
+    "selectedShippingRate": {
+      "id": "USPS:Priority",
+      "carrier": "USPS",
+      "service": "Priority",
+      "totalCents": 895,
+      "deliveryDays": 3,
+      "parcelCount": 1,
+      "quotedAt": "2026-08-14T12:01:30.000Z"
+    }
+  },
+  "confirmCheckoutRequest": {
+    "orderId": "order-fixture",
+    "sourceId": "cnon:card-nonce-ok"
+  },
+  "paymentResult": {
+    "status": "needs-configuration",
+    "errorMessage": "Square sandbox credentials are not configured"
+  }
+}

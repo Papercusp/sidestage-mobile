@@ -6,6 +6,22 @@
 //! through `sidestage-bindings`. Product, event, realtime, cart, and checkout
 //! behavior belongs here so the native shells cannot drift.
 
+mod cart;
+mod checkout;
+mod client;
+mod models;
+mod orders;
+mod realtime;
+
+pub use cart::*;
+pub use checkout::*;
+pub use client::{
+    ApiClient, ApiError, ReadFreshness, ReadSource, ResiliencePolicy, ResilientRead, RetryPolicy,
+};
+pub use models::*;
+pub use orders::*;
+pub use realtime::*;
+
 /// Return the core crate version baked into the native library.
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()

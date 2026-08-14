@@ -1,0 +1,28 @@
+{
+  "_fixture": {
+    "comment": "Sample captured from the live GET /catalog?pageSize=1 response on 2026-08-14; the endpoint wrapper and first row are preserved."
+  },
+  "page": 1,
+  "pageSize": 1,
+  "rows": [
+    {
+      "id": "a000hlk3w1jw50m1i6hdrzip",
+      "groupId": "dup4rh6fe2zjy7vb",
+      "title": "Nortel Networks - Nortel Passport 8630GBR - Switch - Gigabit En + 30 X Sfp (empt",
+      "brand": "Nortel",
+      "productType": "NETWORK_SWITCH",
+      "sku": "DUP4RH6FE2ZJ-NEW-0D",
+      "condition": "NEW",
+      "handlingDays": 0,
+      "priceCents": 4999,
+      "availableQty": 79,
+      "description": "USED. Excellent working and cosmetic conditions. Nortel DS1404063 8630GBR 30-Port SFP Gigabit Routing Switch Blade Module",
+      "weight": {
+        "unit": "pounds",
+        "value": 15
+      }
+    }
+  ],
+  "total": 10000,
+  "totalIsFloor": true
+}

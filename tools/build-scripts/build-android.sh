@@ -19,8 +19,16 @@ if ! command -v cargo-ndk >/dev/null 2>&1 && ! cargo ndk --version >/dev/null 2>
     exit 1
 fi
 
-rm -rf android/app/src/main/jniLibs
-mkdir -p android/app/src/main/jniLibs
+ANDROID_ABIS=(arm64-v8a armeabi-v7a x86 x86_64)
+JNI_LIBS=()
+for abi in "${ANDROID_ABIS[@]}"; do
+    lib="android/app/src/main/jniLibs/$abi/libsidestage.so"
+    mkdir -p "$(dirname "$lib")"
+    # Generated outputs must never fall back to a previous invocation when a
+    # cross-build fails or cargo decides there is nothing new to copy.
+    rm -f "$lib"
+    JNI_LIBS+=("$lib")
+done
 
 echo "==> Cross-compiling sidestage-bindings for Android"
 cargo ndk \
@@ -32,6 +40,9 @@ cargo ndk \
     build -p sidestage-bindings --release
 
 find android/app/src/main/jniLibs -name 'libsidestage.so' -printf '    %p (%s bytes)\n'
+
+KT_BINDINGS="android/app/src/main/kotlin/uniffi/sidestage/sidestage.kt"
+tools/build-scripts/verify-android-uniffi-abi.sh "$KT_BINDINGS" "${JNI_LIBS[@]}"
 
 if [ -x android/gradlew ]; then
     echo "==> Assembling Android debug APK"

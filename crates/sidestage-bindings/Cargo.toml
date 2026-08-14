@@ -9,10 +9,13 @@ description = "UniFFI boundary exposing sidestage-core to Kotlin and Swift."
 
 [lib]
 name = "sidestage"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 sidestage-core = { path = "../sidestage-core" }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 uniffi = { workspace = true, features = ["tokio"] }
 
 [build-dependencies]
@@ -21,3 +24,7 @@ uniffi = { workspace = true, features = ["build"] }
 [[bin]]
 name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
+
+[[bin]]
+name = "sidestage-bindings-smoke"
+path = "smoke.rs"
