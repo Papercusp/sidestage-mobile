@@ -56,6 +56,7 @@ fun BuyerBrowseScreen(
     onInStockOnlyChanged: (Boolean) -> Unit,
     onLoadMore: () -> Unit,
     onRetryEvents: () -> Unit,
+    onRetryProducts: () -> Unit,
     onOpenEvent: (EventSummary) -> Unit,
 ) {
     val events = state.visibleEvents
@@ -124,8 +125,8 @@ fun BuyerBrowseScreen(
             item {
                 ErrorNotice(
                     message = state.productsError,
-                    actionLabel = null,
-                    onAction = null,
+                    actionLabel = "Try again",
+                    onAction = onRetryProducts,
                 )
             }
         }

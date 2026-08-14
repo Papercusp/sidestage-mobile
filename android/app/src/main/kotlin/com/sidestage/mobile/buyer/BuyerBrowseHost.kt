@@ -68,6 +68,7 @@ fun BuyerBrowseHost(
         onInStockOnlyChanged = holder::onInStockOnlyChanged,
         onLoadMore = holder::onLoadMore,
         onRetryEvents = holder::onRetryEvents,
+        onRetryProducts = holder::onRetryProducts,
         onOpenEvent = onOpenEvent,
     )
 }

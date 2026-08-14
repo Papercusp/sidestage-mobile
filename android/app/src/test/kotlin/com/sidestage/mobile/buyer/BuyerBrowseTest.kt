@@ -66,16 +66,28 @@ private class FakeCatalogSource(
     var types: List<String> = emptyList(),
 ) : BuyerCatalogSource {
     val catalogCalls = mutableListOf<CatalogSearch>()
+    var eventCalls = 0
     var eventsFailure: Exception? = null
     var catalogFailure: Exception? = null
+    var eventsFailuresRemaining = 0
+    var catalogFailuresRemaining = 0
 
     override suspend fun events(): List<EventSummary> {
+        eventCalls += 1
+        if (eventsFailuresRemaining > 0) {
+            eventsFailuresRemaining -= 1
+            throw IllegalStateException("events temporarily unreachable")
+        }
         eventsFailure?.let { throw it }
         return events
     }
 
     override suspend fun catalog(search: CatalogSearch): CatalogPage {
         catalogCalls += search
+        if (catalogFailuresRemaining > 0) {
+            catalogFailuresRemaining -= 1
+            throw IllegalStateException("catalog temporarily unreachable")
+        }
         catalogFailure?.let { throw it }
         return CatalogPage(
             rows = rows,
@@ -235,6 +247,36 @@ class BuyerBrowsePresentationTest {
 }
 
 class BuyerBrowseStateHolderTest {
+    @Test
+    fun `initial load recovers when the API restarts under it`() =
+        runBlocking {
+            val source =
+                FakeCatalogSource(
+                    events = listOf(event("live", status = EventStatus.LIVE)),
+                    rows = listOf(variant()),
+                    total = 1uL,
+                ).apply {
+                    eventsFailuresRemaining = 1
+                    catalogFailuresRemaining = 1
+                }
+            val holder =
+                BuyerBrowseStateHolder(
+                    source = source,
+                    scope = this,
+                    initialRetryDelaysMillis = listOf(0L),
+                )
+
+            holder.start()
+            delay(50)
+
+            assertEquals(2, source.eventCalls)
+            assertEquals(2, source.catalogCalls.size)
+            assertNull(holder.state.value.eventsError)
+            assertNull(holder.state.value.productsError)
+            assertEquals(listOf("live"), holder.state.value.events.map { it.eventId })
+            assertEquals(listOf("Barista Pro Espresso Machine"), holder.state.value.products.map { it.title })
+        }
+
     @Test
     fun `the first load fills rooms, catalog and the type filter`() =
         runBlocking {

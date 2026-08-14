@@ -42,6 +42,7 @@ class BuyerBrowseStateHolder(
     private val source: BuyerCatalogSource,
     private val scope: CoroutineScope,
     private val debounceMillis: Long = BuyerBrowseDefaults.DEBOUNCE_MILLIS,
+    private val initialRetryDelaysMillis: List<Long> = listOf(500L, 1_500L, 3_000L),
 ) {
     private val backing = MutableStateFlow(BuyerBrowseState())
     val state: StateFlow<BuyerBrowseState> = backing.asStateFlow()
@@ -50,9 +51,9 @@ class BuyerBrowseStateHolder(
 
     /** Initial load: the event list, the product-type filter, page one. */
     fun start() {
-        scope.launch { loadEvents() }
+        scope.launch { loadEventsInitially() }
         scope.launch { loadProductTypes() }
-        scope.launch { loadProducts(page = BuyerBrowseDefaults.FIRST_PAGE, append = false) }
+        scope.launch { loadProductsInitially() }
     }
 
     fun onSearchTextChanged(text: String) {
@@ -77,6 +78,10 @@ class BuyerBrowseStateHolder(
         scope.launch { loadEvents() }
     }
 
+    fun onRetryProducts() {
+        scope.launch { loadProducts(page = BuyerBrowseDefaults.FIRST_PAGE, append = false) }
+    }
+
     fun onLoadMore() {
         val current = backing.value
         if (!current.hasMore || current.loadingProducts || current.loadingMore) return
@@ -96,6 +101,29 @@ class BuyerBrowseStateHolder(
                 delay(debounceMillis)
                 loadProducts(page = BuyerBrowseDefaults.FIRST_PAGE, append = false)
             }
+    }
+
+    /**
+     * A dev API reload or a short mobile handoff must not strand the initial
+     * Buyer screen in an error snapshot after connectivity has returned.
+     * Later failures stay user-driven so an offline device does not poll.
+     */
+    private suspend fun loadEventsInitially() {
+        loadEvents()
+        for (retryDelay in initialRetryDelaysMillis) {
+            if (backing.value.eventsError == null) return
+            delay(retryDelay)
+            loadEvents()
+        }
+    }
+
+    private suspend fun loadProductsInitially() {
+        loadProducts(page = BuyerBrowseDefaults.FIRST_PAGE, append = false)
+        for (retryDelay in initialRetryDelaysMillis) {
+            if (backing.value.productsError == null) return
+            delay(retryDelay)
+            loadProducts(page = BuyerBrowseDefaults.FIRST_PAGE, append = false)
+        }
     }
 
     suspend fun loadEvents() {
