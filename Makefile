@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 
-.PHONY: help build-rust test check fmt fmt-check clippy bindings-smoke bindings-swift-smoke bindings-kotlin bindings-swift android ios scaffold-check clean
+.PHONY: help build-rust test check fmt fmt-check clippy bindings-smoke bindings-swift-smoke bindings-kotlin bindings-swift android android-release test-android-release-provenance ios scaffold-check clean
 
 help:
 	@echo "Targets:"
@@ -12,6 +12,8 @@ help:
 	@echo "  make bindings-kotlin — generate UniFFI Kotlin into android/app/src/main/kotlin"
 	@echo "  make bindings-swift — generate UniFFI Swift into ios/SideStageCore"
 	@echo "  make android        — cargo-ndk build + Gradle debug assemble when available"
+	@echo "  make android-release — build a provenance-bound APK+AAB (set PAPERCUP_RELEASE_VERSION)"
+	@echo "  make test-android-release-provenance — test release source/version/hash binding"
 	@echo "  make ios            — build SideStageCore.xcframework (macOS only)"
 
 build-rust:
@@ -32,7 +34,7 @@ clippy:
 scaffold-check:
 	./tools/build-scripts/verify-scaffold.sh
 
-check: scaffold-check fmt-check clippy test bindings-smoke
+check: scaffold-check fmt-check clippy test bindings-smoke test-android-release-provenance
 
 bindings-smoke:
 	cargo run --quiet -p sidestage-bindings --bin sidestage-bindings-smoke
@@ -58,6 +60,12 @@ bindings-swift:
 
 android: bindings-kotlin
 	./tools/build-scripts/build-android.sh
+
+android-release: bindings-kotlin
+	./tools/build-scripts/build-android.sh release
+
+test-android-release-provenance:
+	./tools/tests/android-release-provenance-test.sh
 
 ios:
 	./tools/build-scripts/build-ios.sh

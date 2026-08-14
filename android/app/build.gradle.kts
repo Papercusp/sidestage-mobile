@@ -30,7 +30,7 @@ android {
         minSdk = 33
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = providers.gradleProperty("papercupReleaseVersion").getOrElse("0.1.0")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
@@ -60,9 +60,29 @@ android {
         }
     }
 
+    // Reuse the organization-wide Android release identity. Key material stays
+    // outside the repo; the producer refuses an unsigned output later.
+    val releaseKeystorePath = providers.gradleProperty("PAPERCUP_RELEASE_KEYSTORE").orNull
+        ?: System.getenv("PAPERCUP_RELEASE_KEYSTORE")
+    val hasReleaseKeystore = releaseKeystorePath != null && file(releaseKeystorePath).exists()
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = providers.gradleProperty("PAPERCUP_RELEASE_KEYSTORE_PASSWORD").orNull
+                    ?: System.getenv("PAPERCUP_RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = providers.gradleProperty("PAPERCUP_RELEASE_KEY_ALIAS").orNull
+                    ?: System.getenv("PAPERCUP_RELEASE_KEY_ALIAS") ?: "papercup"
+                keyPassword = providers.gradleProperty("PAPERCUP_RELEASE_KEY_PASSWORD").orNull
+                    ?: System.getenv("PAPERCUP_RELEASE_KEY_PASSWORD") ?: storePassword
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = true
+            signingConfigs.findByName("release")?.also { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
