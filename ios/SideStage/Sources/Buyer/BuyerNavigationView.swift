@@ -19,7 +19,23 @@ struct BuyerNavigationView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            BuyerFeedView(events: events)
+            // The browse + search surface is the buyer's landing screen when
+            // the core is reachable (P-006). `BuyerFeedView` stays as the
+            // fallback: with no client there is nothing to search, and a
+            // shell-provided event list still beats an empty tab.
+            Group {
+                if let client {
+                    BuyerBrowseView(
+                        client: client,
+                        fallbackEvents: events,
+                        onSelectEvent: { id, title in
+                            path.append(.liveEvent(id: id, title: title))
+                        }
+                    )
+                } else {
+                    BuyerFeedView(events: events)
+                }
+            }
                 .navigationDestination(for: BuyerRoute.self) { route in
                     switch route {
                     case let .liveEvent(id, title):
