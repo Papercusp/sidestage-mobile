@@ -1,0 +1,22 @@
+id: sidestage-mobile
+extends: coding-factory
+knobs:
+  harnessKind: coding
+  testCommand: cargo test
+  fromRepo:
+    toolchains:
+      - rust
+    packageManager: cargo
+    monorepo: true
+    frontend: false
+    isGitRepo: true
+    testCommandSource: cargo
+    testCommandVerified: null
+    harvestedDocs: []
+recursion:
+  enabled: true
+  maxDepth: 1
+  strategy: escalate
+  spawnOn:
+    custom: monorepo-subproject
+description: Coding harness generated from repo (rust, monorepo).
