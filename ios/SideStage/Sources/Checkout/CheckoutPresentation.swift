@@ -222,16 +222,53 @@ enum CheckoutPresentation {
     static let squareNeedsConfigurationDetail =
         "Set the server-side Square sandbox credentials to enable tokenized card checkout."
 
-    /// The message shown when the payment came back as anything but completed
+    /// The message shown when the payment came back as anything but paid
     /// and Square did not say why. Verbatim from the web fallback.
     static let paymentDidNotCompleteMessage = "Square did not complete the payment."
 
-    /// A payment is only a success when Square says `completed`. Anything else
-    /// — `failed`, `needs-configuration`, an unrecognised status — leaves the
-    /// buyer on the payment step rather than showing a receipt for a charge
-    /// that may not exist.
+    /// Every payment status this app can ever be handed — the whole reachable
+    /// vocabulary, not a sample of it.
+    ///
+    /// The FFI layer flattens the core's `PaymentResultStatus` enum to a string
+    /// through an *exhaustive* match (`crates/sidestage-bindings/src/lib.rs`,
+    /// `impl From<core::PaymentResult> for PaymentResult`), so a status outside
+    /// this set cannot reach Swift. `status_vocabulary_guard.rs` pins this set
+    /// to those match arms, which is what makes that claim checkable rather
+    /// than merely asserted here.
+    static let paymentStatusVocabulary: Set<String> = ["paid", "failed", "needs-configuration"]
+
+    /// The one member of `paymentStatusVocabulary` that means money moved.
+    static let paidPaymentStatus = "paid"
+
+    /// A payment is a success only when the API says `paid`.
+    ///
+    /// It is `paid`, **not** `completed`. `completed` is Square's raw upstream
+    /// status, which the API consumes itself and then translates before it ever
+    /// answers a client: `apps/api/src/checkout/checkout.service.ts` tests
+    /// Square's `COMPLETED` and returns its own `'paid'`. Matching `completed`
+    /// here made `step = .success` unreachable, so a buyer whose card had been
+    /// charged was shown "Square did not complete the payment" instead of a
+    /// receipt. Anything that is not `paid` keeps the buyer on the payment step.
     static func isPaymentComplete(status: String) -> Bool {
-        status == "completed"
+        status == paidPaymentStatus
+    }
+
+    /// Every order status the FFI can emit, pinned the same way as
+    /// `paymentStatusVocabulary` (`core::CheckoutOrderStatus`).
+    static let orderStatusVocabulary: Set<String> = ["pending", "paid", "failed"]
+
+    /// The one member of `orderStatusVocabulary` that means the order settled.
+    static let paidOrderStatus = "paid"
+
+    /// Whether a confirmation as a whole earns a receipt.
+    ///
+    /// Both halves must agree, matching the web reference
+    /// (`apps/web/src/BuyerCheckout.tsx`:
+    /// `result.payment.status !== 'paid' || result.order.status !== 'paid'`).
+    /// A paid payment against an order the server did not mark paid is exactly
+    /// the divergence a receipt must not paper over.
+    static func isCheckoutConfirmed(paymentStatus: String, orderStatus: String) -> Bool {
+        isPaymentComplete(status: paymentStatus) && orderStatus == paidOrderStatus
     }
 
     // MARK: - Receipt

@@ -217,7 +217,10 @@ final class CheckoutViewModel {
             let confirmation = try await client.confirmCheckout(
                 input: ConfirmCheckoutRequest(orderId: orderID, sourceId: sourceID)
             )
-            guard CheckoutPresentation.isPaymentComplete(status: confirmation.payment.status) else {
+            guard CheckoutPresentation.isCheckoutConfirmed(
+                paymentStatus: confirmation.payment.status,
+                orderStatus: confirmation.order.status
+            ) else {
                 errorMessage = confirmation.payment.errorMessage
                     ?? CheckoutPresentation.paymentDidNotCompleteMessage
                 return

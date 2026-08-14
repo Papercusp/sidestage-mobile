@@ -169,20 +169,66 @@ final class CheckoutPresentationTests: XCTestCase {
 
     // MARK: - Payment
 
-    func testOnlyACompletedPaymentShowsAReceipt() {
-        XCTAssertTrue(CheckoutPresentation.isPaymentComplete(status: "completed"))
+    func testOnlyAPaidPaymentShowsAReceipt() {
+        XCTAssertTrue(CheckoutPresentation.isPaymentComplete(status: "paid"))
+    }
+
+    /// The regression this file previously had backwards.
+    ///
+    /// `completed` is Square's raw upstream status; the API consumes it and
+    /// answers clients with its own `paid`, so `completed` never reaches Swift.
+    /// Accepting it — and not accepting `paid` — made the success step
+    /// unreachable: a charged buyer was shown "Square did not complete the
+    /// payment". The old tests were green because they asserted the same wrong
+    /// vocabulary the code used, with `paid` absent from BOTH halves.
+    func testSquaresRawCompletedIsNotTheClientContract() {
+        XCTAssertFalse(
+            CheckoutPresentation.isPaymentComplete(status: "completed"),
+            "completed is Square's internal status and must never satisfy the client check"
+        )
     }
 
     /// The strict half, and the one worth guarding: anything that is not
-    /// `completed` must keep the buyer on the payment step. A receipt for a
-    /// charge that did not happen is the worst outcome this flow can produce.
-    func testNonCompletedPaymentStatusesAreNotSuccess() {
-        for status in ["failed", "pending", "needs-configuration", "COMPLETED", ""] {
+    /// `paid` must keep the buyer on the payment step. A receipt for a charge
+    /// that did not happen is the worst outcome this flow can produce.
+    func testNonPaidPaymentStatusesAreNotSuccess() {
+        for status in ["failed", "pending", "needs-configuration", "completed", "PAID", ""] {
             XCTAssertFalse(
                 CheckoutPresentation.isPaymentComplete(status: status),
-                "\(status) must not be treated as a completed payment"
+                "\(status) must not be treated as a paid payment"
             )
         }
+    }
+
+    /// Ties the accepted status to the set the FFI can actually emit, so a
+    /// success check against a string no layer below can produce (the original
+    /// defect) fails here rather than in a buyer's hands.
+    func testTheSuccessStatusIsAMemberOfTheEmittableVocabulary() {
+        XCTAssertTrue(
+            CheckoutPresentation.paymentStatusVocabulary
+                .contains(CheckoutPresentation.paidPaymentStatus),
+            "the success status must be one the bindings can emit"
+        )
+        XCTAssertEqual(
+            CheckoutPresentation.paymentStatusVocabulary
+                .filter { CheckoutPresentation.isPaymentComplete(status: $0) },
+            [CheckoutPresentation.paidPaymentStatus],
+            "exactly one emittable payment status may mean success"
+        )
+    }
+
+    /// A receipt needs BOTH halves to agree, matching the web reference.
+    func testAReceiptNeedsThePaymentAndTheOrderToAgree() {
+        XCTAssertTrue(
+            CheckoutPresentation.isCheckoutConfirmed(paymentStatus: "paid", orderStatus: "paid")
+        )
+        XCTAssertFalse(
+            CheckoutPresentation.isCheckoutConfirmed(paymentStatus: "paid", orderStatus: "pending"),
+            "a paid payment against an unsettled order must not show a receipt"
+        )
+        XCTAssertFalse(
+            CheckoutPresentation.isCheckoutConfirmed(paymentStatus: "failed", orderStatus: "paid")
+        )
     }
 
     func testNeedsConfigurationIsDetectedFromTheSessionStatus() {
