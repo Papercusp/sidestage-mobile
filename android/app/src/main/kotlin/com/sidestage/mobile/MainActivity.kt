@@ -16,8 +16,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             SideStageTheme {
                 SideStageApp(
+                    catalogSource = SideStageClientFactory.catalogSource,
                     liveEventGateway = SideStageClientFactory.shared,
                     checkoutGateway = SideStageClientFactory.checkoutGateway,
+                    ordersGateway = SideStageClientFactory.ordersGateway,
                     buyerSession = SideStageClientFactory.buyerSession,
                 )
             }

@@ -12,6 +12,9 @@ import com.sidestage.mobile.checkout.BuyerCheckoutSession
 import com.sidestage.mobile.checkout.BuyerSessionState
 import com.sidestage.mobile.checkout.BuyerShippingRate
 import com.sidestage.mobile.checkout.CheckoutAddress
+import com.sidestage.mobile.orders.BuyerOrder
+import com.sidestage.mobile.orders.BuyerOrderLine
+import com.sidestage.mobile.orders.BuyerOrdersGateway
 import uniffi.sidestage.AddCartItemRequest
 import uniffi.sidestage.ApiException
 import uniffi.sidestage.ApiSession
@@ -56,6 +59,11 @@ object SideStageClientFactory {
 
     /** Buyer search + browse reads events and the catalog through that client. */
     val catalogSource: BuyerCatalogSource? by lazy { client?.let(::ClientBuyerCatalogSource) }
+
+    /** Buyer history uses the same session-bound client as checkout. */
+    val ordersGateway: BuyerOrdersGateway? by lazy {
+        client?.let { UniFfiBuyerOrdersGateway(it, BuildConfig.SIDESTAGE_BUYER_ID) }
+    }
 
     fun streamUrl(eventId: String): String = LiveEventPresentation.streamUrl(BuildConfig.SIDESTAGE_MEDIA_BASE_URL, eventId)
 }
@@ -178,7 +186,7 @@ private class UniFfiBuyerCheckoutGateway(
                         shippingAddress = address.toFfiAddress(),
                         shippingRateId = shippingRateId,
                     ),
-                ).let { BuyerCheckoutSession(order = it.order.toBuyerOrder(), status = it.session.status) }
+                ).let { BuyerCheckoutSession(order = it.order.toBuyerCheckoutOrder(), status = it.session.status) }
         }
 
     override suspend fun confirmCheckout(
@@ -190,7 +198,7 @@ private class UniFfiBuyerCheckoutGateway(
                 .confirmCheckout(ConfirmCheckoutRequest(orderId = orderId, sourceId = sourceId))
                 .let {
                     BuyerCheckoutConfirmation(
-                        order = it.order.toBuyerOrder(),
+                        order = it.order.toBuyerCheckoutOrder(),
                         paymentStatus = it.payment.status,
                         paymentError = it.payment.errorMessage,
                     )
@@ -235,13 +243,57 @@ private fun uniffi.sidestage.ShippingRate.toBuyerRate(): BuyerShippingRate =
         deliveryDays = deliveryDays?.toInt(),
     )
 
-private fun uniffi.sidestage.CheckoutOrder.toBuyerOrder(): BuyerCheckoutOrder =
+private class UniFfiBuyerOrdersGateway(
+    private val client: SideStageClient,
+    override val buyerId: String,
+) : BuyerOrdersGateway {
+    override suspend fun orders(): List<BuyerOrder> =
+        try {
+            client.orders().map { it.toBuyerHistoryOrder() }
+        } catch (error: ApiException) {
+            throw IllegalStateException("Orders are unavailable right now.", error)
+        }
+}
+
+private fun uniffi.sidestage.CheckoutOrder.toBuyerCheckoutOrder(): BuyerCheckoutOrder =
     BuyerCheckoutOrder(
         id = id,
         subtotalCents = subtotalCents,
         shippingCents = shippingCents,
         totalCents = totalCents,
         status = status,
+    )
+
+private fun uniffi.sidestage.CheckoutOrder.toBuyerHistoryOrder(): BuyerOrder =
+    BuyerOrder(
+        id = id,
+        buyerId = buyerId,
+        eventId = eventId,
+        createdAt = createdAt,
+        status = status,
+        subtotalCents = subtotalCents,
+        shippingCents = shippingCents,
+        totalCents = totalCents,
+        items =
+            items.map {
+                BuyerOrderLine(
+                    productId = it.productId,
+                    title = it.title,
+                    priceCents = it.priceCents,
+                    quantity = it.quantity.toInt(),
+                )
+            },
+        shippingService =
+            selectedShippingRate?.let { rate ->
+                listOf(rate.carrier, rate.service).filter(String::isNotBlank).joinToString(" ").ifEmpty { null }
+            },
+        shippingAddress =
+            shippingAddress?.let { address ->
+                listOf(address.line1, address.line2, address.city, address.state, address.postalCode)
+                    .filterNotNull()
+                    .filter(String::isNotBlank)
+                    .joinToString(", ")
+            },
     )
 
 private suspend fun <T> checkoutCall(block: suspend () -> T): T =

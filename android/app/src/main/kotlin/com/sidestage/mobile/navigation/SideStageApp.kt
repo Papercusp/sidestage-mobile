@@ -4,23 +4,11 @@
 package com.sidestage.mobile.navigation
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,22 +29,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.sidestage.mobile.buyer.BuyerBrowseHost
+import com.sidestage.mobile.buyer.BuyerCatalogSource
 import com.sidestage.mobile.buyer.BuyerLiveEventScreen
 import com.sidestage.mobile.buyer.LiveEventGateway
 import com.sidestage.mobile.checkout.BuyerCheckoutGateway
 import com.sidestage.mobile.checkout.BuyerCheckoutScreen
 import com.sidestage.mobile.checkout.BuyerSessionState
 import com.sidestage.mobile.checkout.CheckoutStep
+import com.sidestage.mobile.orders.BuyerOrderDetailScreen
+import com.sidestage.mobile.orders.BuyerOrdersController
+import com.sidestage.mobile.orders.BuyerOrdersGateway
+import com.sidestage.mobile.orders.BuyerOrdersScreen
 import com.sidestage.mobile.theme.SideStageTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SideStageApp(
+    catalogSource: BuyerCatalogSource? = null,
     liveEventGateway: LiveEventGateway? = null,
     checkoutGateway: BuyerCheckoutGateway? = null,
+    ordersGateway: BuyerOrdersGateway? = null,
     buyerSession: BuyerSessionState? = null,
 ) {
     val activeBuyerSession = buyerSession ?: remember { BuyerSessionState() }
+    val ordersController = remember(ordersGateway) { BuyerOrdersController(ordersGateway) }
     var selectedTab by remember { mutableStateOf(MobileTab.initial) }
     val buyerStack =
         remember {
@@ -108,13 +104,14 @@ fun SideStageApp(
     ) { innerPadding ->
         when (route) {
             MobileRoute.BuyerFeed -> {
-                BuyerFeedScreen(
+                BuyerBrowseHost(
                     contentPadding = innerPadding,
-                    onOpenLiveEvent = {
+                    source = catalogSource,
+                    onOpenEvent = { event ->
                         buyerStack +=
                             MobileRoute.LiveEvent(
-                                id = "sunday-drop",
-                                title = "Sunday vintage drop",
+                                id = event.eventId,
+                                title = event.title,
                             )
                     },
                 )
@@ -152,22 +149,19 @@ fun SideStageApp(
             }
 
             MobileRoute.OrdersList -> {
-                RouteScaffold(
-                    eyebrow = "Buyer history",
-                    title = "Orders",
-                    body = "Track payment, shipping, and delivery status.",
-                    actionLabel = "Open sample order",
+                BuyerOrdersScreen(
+                    controller = ordersController,
                     contentPadding = innerPadding,
-                    onAction = { ordersStack += MobileRoute.OrderDetail(id = "order-17") },
+                    onOpenOrder = { ordersStack += MobileRoute.OrderDetail(id = it.id) },
                 )
             }
 
             is MobileRoute.OrderDetail -> {
-                RouteScaffold(
-                    eyebrow = "Order ${route.id}",
-                    title = "Order detail",
-                    body = "Order status and fulfillment details render here.",
+                BuyerOrderDetailScreen(
+                    controller = ordersController,
+                    orderId = route.id,
                     contentPadding = innerPadding,
+                    onBack = { ordersStack.removeAt(ordersStack.lastIndex) },
                 )
             }
         }
@@ -205,74 +199,5 @@ private fun SideStageNavigationBar(
                     ),
             )
         }
-    }
-}
-
-@Composable
-private fun BuyerFeedScreen(
-    contentPadding: PaddingValues,
-    onOpenLiveEvent: () -> Unit,
-) {
-    RouteScaffold(
-        eyebrow = "Join the room",
-        title = "Sunday vintage drop",
-        body = "Watch together, ask questions, and keep the good finds moving.",
-        actionLabel = "Enter live room",
-        contentPadding = contentPadding,
-        onAction = onOpenLiveEvent,
-    )
-}
-
-@Composable
-private fun RouteScaffold(
-    eyebrow: String,
-    title: String,
-    body: String,
-    contentPadding: PaddingValues,
-    actionLabel: String? = null,
-    onAction: (() -> Unit)? = null,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(contentPadding)
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(eyebrow, color = SideStageTokens.Accent, style = MaterialTheme.typography.labelLarge)
-        Text(title, style = MaterialTheme.typography.headlineMedium)
-        Text(
-            body,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(Modifier.height(8.dp))
-        if (actionLabel != null && onAction != null) {
-            PrimaryAction(label = actionLabel, onClick = onAction)
-        }
-    }
-}
-
-@Composable
-private fun PrimaryAction(
-    label: String,
-    onClick: () -> Unit,
-) {
-    Button(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .sizeIn(minHeight = SideStageTokens.MinimumTouchTarget),
-        onClick = onClick,
-        shape = RoundedCornerShape(SideStageTokens.PrimaryButtonRadius),
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = SideStageTokens.Accent,
-                contentColor = SideStageTokens.OnAccent,
-            ),
-    ) {
-        Text(label)
     }
 }
