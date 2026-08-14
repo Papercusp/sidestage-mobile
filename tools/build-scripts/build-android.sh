@@ -4,6 +4,22 @@
 # developer debug APK (default) or the public-release APK+AAB provenance pair.
 set -euo pipefail
 
+resolve_android_sdk() {
+    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+    if [ ! -d "$sdk_root" ]; then
+        echo "ERROR: Android SDK not found at $sdk_root; set ANDROID_SDK_ROOT or ANDROID_HOME" >&2
+        return 1
+    fi
+    ANDROID_SDK_ROOT="$sdk_root"
+    ANDROID_HOME="$sdk_root"
+    export ANDROID_SDK_ROOT ANDROID_HOME
+}
+
+# Allow the environment resolver to be exercised without starting a build.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -28,7 +44,8 @@ if [ "$BUILD_MODE" = "release" ]; then
     rm -f "$RELEASE_APK" "$RELEASE_AAB" "$RELEASE_PROVENANCE"
 fi
 
-: "${ANDROID_NDK_HOME:=$HOME/Android/Sdk/ndk/27.0.12077973}"
+resolve_android_sdk
+: "${ANDROID_NDK_HOME:=$ANDROID_SDK_ROOT/ndk/27.0.12077973}"
 export ANDROID_NDK_HOME
 
 if [ ! -d "$ANDROID_NDK_HOME" ]; then
@@ -85,11 +102,10 @@ verify_packaged_abis() {
 verify_16kb_alignment() {
     local apk="$1"
     local native_root="$REPO_ROOT/android/app/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib"
-    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
     local objdump zipalign power so checked=0
     objdump="$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" \
         -path '*/bin/llvm-objdump' -type f -print -quit)"
-    zipalign="$(find "$sdk_root/build-tools" -mindepth 2 -maxdepth 2 \
+    zipalign="$(find "$ANDROID_SDK_ROOT/build-tools" -mindepth 2 -maxdepth 2 \
         -name zipalign -type f -print | sort -V | tail -n 1)"
     if [ -z "$objdump" ] || [ -z "$zipalign" ]; then
         echo "ERROR: 16 KB verification requires llvm-objdump and zipalign" >&2

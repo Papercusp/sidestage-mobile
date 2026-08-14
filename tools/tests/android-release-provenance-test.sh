@@ -4,8 +4,23 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HELPER="$ROOT/tools/build-scripts/android-release-provenance.sh"
+BUILD_HELPER="$ROOT/tools/build-scripts/build-android.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+
+test_android_sdk_resolution() (
+    unset ANDROID_HOME ANDROID_SDK_ROOT
+    local fake_home="$TMP/fake-home"
+    mkdir -p "$fake_home/Android/Sdk"
+    HOME="$fake_home"
+    # shellcheck source=../build-scripts/build-android.sh
+    source "$BUILD_HELPER"
+    resolve_android_sdk
+    [[ "$ANDROID_HOME" == "$fake_home/Android/Sdk" ]]
+    [[ "$ANDROID_SDK_ROOT" == "$fake_home/Android/Sdk" ]]
+)
+
+test_android_sdk_resolution
 
 git -C "$TMP" init -q
 git -C "$TMP" config user.name test
@@ -67,4 +82,4 @@ if run_helper write 0.1.0 "$APK" "$AAB" >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "✓ Android release provenance producer rejects version, source, and hash drift"
+echo "✓ Android release resolves the SDK and rejects version, source, and hash drift"
