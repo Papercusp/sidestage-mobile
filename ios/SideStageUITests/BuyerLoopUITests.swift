@@ -45,12 +45,15 @@ final class BuyerLoopUITests: XCTestCase {
 
         // Browse: the event feed is the app's first screen and the first proof
         // the client reached the stub at all.
-        XCTAssertTrue(
-            element("buyer.feed").waitForExistence(timeout: 60),
-            "The buyer feed never appeared — the app did not reach the stub API. "
-                + "Requests served: \(server.servedRequests)"
-        )
-
+        //
+        // ⚠ Assert on the CONTENT, not on the "buyer.feed" identifier. That
+        // identifier is real, but it is applied to the outermost container in
+        // BuyerNavigationView (after `.navigationTitle`), and SwiftUI does not
+        // publish a plain container as an accessibility element — so querying it
+        // fails whether or not the feed rendered. An assertion that cannot
+        // distinguish those two states is testing the harness, not the app. The
+        // listed event title is what a user actually sees, and it can only appear
+        // if the client reached the stub and decoded the response.
         let eventRow = app.staticTexts[StubAPIServer.Fixture.eventTitle]
         XCTAssertTrue(
             eventRow.waitForExistence(timeout: 30),
@@ -206,9 +209,49 @@ final class BuyerLoopUITests: XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
+    /// Waits for an element and, on failure, attaches the app's ACTUAL element
+    /// tree to the failure message.
+    ///
+    /// Without this, a missing element yields "no bid field" and nothing else —
+    /// which is consistent with at least four different causes (the view did not
+    /// render; it rendered but its identifier sits on a SwiftUI container that is
+    /// not an accessibility element; it is off-screen in a lazy container; the
+    /// identifier is misspelled). Distinguishing them by editing the test and
+    /// re-running costs a full build-and-boot cycle per guess. The tree names the
+    /// cause in one run, so the diagnostic is cheaper than a single guess.
+    @discardableResult
+    private func require(
+        _ identifier: String,
+        timeout: TimeInterval = 30,
+        _ why: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let target = element(identifier)
+        if !target.waitForExistence(timeout: timeout) {
+            XCTFail(
+                """
+                \(why)
+                Missing identifier: \(identifier)
+                Requests served: \(server.servedRequests)
+                --- app element tree ---
+                \(app.debugDescription)
+                """,
+                file: file,
+                line: line
+            )
+        }
+        return target
+    }
+
     private func placeBid(dollars: String) throws {
-        let bidField = element("buyer.event.bidField")
-        XCTAssertTrue(bidField.waitForExistence(timeout: 30), "No bid field in the live room")
+        let bidField = require(
+            "buyer.event.bidField",
+            "No bid field in the live room. AuctionBlock renders only under "
+                + "`if let auction = model.auction`, so either the auction never "
+                + "arrived over the sync batch, or the field is present under a "
+                + "different identity than the tree below shows."
+        )
         bidField.tap()
         bidField.typeText(dollars)
 

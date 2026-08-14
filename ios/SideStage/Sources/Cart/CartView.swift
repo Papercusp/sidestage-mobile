@@ -27,6 +27,10 @@ struct CartView: View {
             }
         }
         .navigationTitle(CheckoutPresentation.Step.cart.title)
+        // See LiveEventView: a bare block-level identifier overrides every
+        // descendant's own identifier, so `buyer.cart.checkout`, `.subtotal` and
+        // the per-item controls would all report `buyer.cart` instead.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("buyer.cart")
         .task { await store.refresh() }
     }

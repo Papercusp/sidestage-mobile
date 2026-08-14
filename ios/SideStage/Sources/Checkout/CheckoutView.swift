@@ -31,6 +31,9 @@ struct CheckoutView: View {
             }
         }
         .navigationTitle(viewModel.step.title)
+        // See LiveEventView: without `children: .contain` this identifier
+        // overrides every `buyer.checkout.field.*`, `.pay`, `.rate.*` below it.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("buyer.checkout")
     }
 

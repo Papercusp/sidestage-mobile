@@ -115,6 +115,9 @@ private struct BuyerFeedView: View {
             }
         }
         .navigationTitle("SideStage")
+        // See LiveEventView: `children: .contain` keeps the listed event rows
+        // individually identifiable instead of every one reporting `buyer.feed`.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("buyer.feed")
     }
 }

@@ -279,6 +279,14 @@ private struct OnDeckRail: View {
         .padding()
         .background(SideStageTokens.Semantic.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        // `children: .contain` is REQUIRED alongside a block-level identifier.
+        // Without it the identifier propagates onto every descendant and
+        // OVERRIDES the descendant's own — measured in the live element tree,
+        // where the bid TextField, "Place bid" button and current-price label all
+        // reported `buyer.event.auction` and their real identifiers existed
+        // nowhere. That is an accessibility defect first (VoiceOver loses each
+        // control's identity) and only incidentally a testing one.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("buyer.event.onDeck")
     }
 }
@@ -363,6 +371,7 @@ private struct AuctionBlock: View {
         .padding()
         .background(SideStageTokens.Semantic.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("buyer.event.auction")
     }
 
