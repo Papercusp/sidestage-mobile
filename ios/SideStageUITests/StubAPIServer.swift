@@ -240,6 +240,17 @@ final class StubAPIServer {
         if path.hasPrefix("/api") { path = String(path.dropFirst(4)) }
         let segments = path.split(separator: "/").map(String.init)
 
+        // ⚠ SWIFT HAS NO ARRAY DESTRUCTURING PATTERN. A `[...]` in a `case` is an
+        // EXPRESSION pattern — it compiles to `segments == ["catalog", "types"]`.
+        // That works fine for an all-literal route, which is why the fixed routes
+        // below read like destructuring and behave correctly. But it means a
+        // PARAMETERISED route cannot bind a segment inline:
+        //
+        //     case let ("GET", ["catalog", "variants", productID]):   // ✗
+        //     error: pattern variable binding cannot appear in an expression
+        //
+        // The `_` spelling fails the same way ("'_' can only appear in a pattern").
+        // So variable routes bind the whole array and test it in a `where` clause.
         switch (request.method, segments) {
         case ("GET", ["events"]):
             return (200, .json(["events": [state.eventJSON()]]))
@@ -252,8 +263,8 @@ final class StubAPIServer {
             // with no envelope.
             return (200, .json(["Jackets"]))
 
-        case let ("GET", ["catalog", "variants", productID]):
-            return (200, .json(state.variantJSON(productID: productID)))
+        case let ("GET", p) where p.count == 3 && p[0] == "catalog" && p[1] == "variants":
+            return (200, .json(state.variantJSON(productID: p[2])))
 
         case ("POST", ["sync", "rest-query-batch"]):
             // Order matters and is not alphabetical: the core pops the auction
@@ -269,7 +280,7 @@ final class StubAPIServer {
         case ("GET", ["sync", "sse"]):
             return (200, .eventStream)
 
-        case let ("POST", ["auctions", _, "bids"]):
+        case let ("POST", p) where p.count == 3 && p[0] == "auctions" && p[2] == "bids":
             let amount = (request.jsonBody?["amountCents"] as? Int) ?? 0
             let bidder = (request.jsonBody?["bidderId"] as? String) ?? Fixture.buyerID
             state.placeBid(amountCents: amount, bidderID: bidder)
@@ -288,7 +299,7 @@ final class StubAPIServer {
             )
             return (200, .json(state.cartJSON()))
 
-        case let ("GET", ["cart", cartID]) where cartID == Fixture.cartID:
+        case let ("GET", p) where p.count == 2 && p[0] == "cart" && p[1] == Fixture.cartID:
             return (200, .json(state.cartJSON()))
 
         case ("POST", ["shipping", "rates"]):
