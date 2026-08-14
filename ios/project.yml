@@ -50,6 +50,15 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
         FRAMEWORK_SEARCH_PATHS: $(SRCROOT)
+        # REQUIRED, not cosmetic. Xcode refuses to code-sign a bundle that has no
+        # Info.plist, and it fails at the SIGNING step with a message that names
+        # code signing rather than the plist — which reads like a certificate
+        # problem on a machine with no signing identity, and sends you hunting for
+        # credentials that were never the cause. Simulator builds sign ad-hoc and
+        # need no identity; they still need this. Without it:
+        #   error: Cannot code sign because the target does not have an Info.plist
+        #          file and one is not being generated automatically.
+        GENERATE_INFOPLIST_FILE: YES
 
   SideStage:
     type: application
@@ -86,6 +95,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile.tests
         BUNDLE_LOADER: $(TEST_HOST)
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/SideStage.app/SideStage
+        # See the note on SideStageCore — without this the target cannot be signed
+        # and `xcodebuild test` dies at BUILD time, so not one test in this bundle
+        # ever executes.
+        GENERATE_INFOPLIST_FILE: YES
 
   SideStageUITests:
     type: bundle.ui-testing
@@ -98,6 +111,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile.uitests
         TEST_TARGET_NAME: SideStage
+        # See the note on SideStageCore.
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   SideStage:
