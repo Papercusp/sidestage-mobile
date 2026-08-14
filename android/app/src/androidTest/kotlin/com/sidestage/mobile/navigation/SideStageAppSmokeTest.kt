@@ -10,11 +10,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.sidestage.mobile.buyer.BuyerCatalogSource
+import com.sidestage.mobile.buyer.UniFfiLiveEventGateway
 import com.sidestage.mobile.checkout.BuyerSessionState
 import com.sidestage.mobile.orders.BuyerOrder
 import com.sidestage.mobile.orders.BuyerOrderLine
 import com.sidestage.mobile.orders.BuyerOrdersGateway
 import com.sidestage.mobile.theme.SideStageTheme
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -22,6 +24,7 @@ import uniffi.sidestage.CatalogPage
 import uniffi.sidestage.CatalogSearch
 import uniffi.sidestage.EventStatus
 import uniffi.sidestage.EventSummary
+import uniffi.sidestage.SideStageClient
 
 class SideStageAppSmokeTest {
     @get:Rule
@@ -73,6 +76,18 @@ class SideStageAppSmokeTest {
         composeRule.onNodeWithText("Order order-17").performClick()
         composeRule.onNodeWithText("Order detail").assertIsDisplayed()
         composeRule.onNodeWithText("Vintage jacket").assertIsDisplayed()
+    }
+
+    @Test
+    fun productionGatewayUsesTheSharedBidLadderWithoutRecursing() {
+        val gateway =
+            UniFfiLiveEventGateway(
+                SideStageClient("http://127.0.0.1"),
+                BuyerSessionState(),
+            )
+
+        assertEquals(2_600L, gateway.suggestedBidCents(2_400L))
+        assertEquals(2_401L, gateway.minimumNextBidCents(2_400L))
     }
 }
 

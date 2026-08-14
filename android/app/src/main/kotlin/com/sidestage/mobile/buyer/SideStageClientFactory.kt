@@ -29,8 +29,8 @@ import uniffi.sidestage.ShippingAddress
 import uniffi.sidestage.ShippingRatesRequest
 import uniffi.sidestage.SideStageClient
 import uniffi.sidestage.maxCartQuantity
-import uniffi.sidestage.minimumNextBidCents
-import uniffi.sidestage.suggestedBidCents
+import uniffi.sidestage.minimumNextBidCents as ffiMinimumNextBidCents
+import uniffi.sidestage.suggestedBidCents as ffiSuggestedBidCents
 
 object SideStageClientFactory {
     /**
@@ -68,7 +68,7 @@ object SideStageClientFactory {
     fun streamUrl(eventId: String): String = LiveEventPresentation.streamUrl(BuildConfig.SIDESTAGE_MEDIA_BASE_URL, eventId)
 }
 
-private class UniFfiLiveEventGateway(
+internal class UniFfiLiveEventGateway(
     private val client: SideStageClient,
     private val buyerSession: BuyerSessionState,
 ) : LiveEventGateway {
@@ -132,9 +132,9 @@ private class UniFfiLiveEventGateway(
             )
         }
 
-    override fun suggestedBidCents(currentPriceCents: Long): Long = suggestedBidCents(currentPriceCents)
+    override fun suggestedBidCents(currentPriceCents: Long): Long = ffiSuggestedBidCents(currentPriceCents)
 
-    override fun minimumNextBidCents(currentPriceCents: Long): Long = minimumNextBidCents(currentPriceCents)
+    override fun minimumNextBidCents(currentPriceCents: Long): Long = ffiMinimumNextBidCents(currentPriceCents)
 }
 
 private class UniFfiBuyerCheckoutGateway(
