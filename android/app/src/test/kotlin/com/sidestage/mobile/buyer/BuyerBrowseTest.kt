@@ -300,7 +300,11 @@ class BuyerBrowseStateHolderTest {
             source.rows = listOf(variant(id = "b"))
             holder.loadProducts(page = 2, append = true)
 
-            assertEquals(listOf("a", "b"), holder.state.value.products.map { it.id })
+            assertEquals(
+                listOf("a", "b"),
+                holder.state.value.products
+                    .map { it.id },
+            )
             assertEquals(2, holder.state.value.query.page)
         }
 
@@ -338,7 +342,11 @@ class BuyerBrowseStateHolderTest {
             holder.loadEvents()
 
             assertNull(holder.state.value.eventsError)
-            assertEquals(listOf("live"), holder.state.value.events.map { it.eventId })
+            assertEquals(
+                listOf("live"),
+                holder.state.value.events
+                    .map { it.eventId },
+            )
         }
 
     @Test
@@ -358,7 +366,11 @@ class BuyerBrowseStateHolderTest {
             holder.onSearchTextChanged("vintage")
 
             // Local filtering is immediate; only the network read waits.
-            assertEquals(listOf("a"), holder.state.value.visibleEvents.map { it.eventId })
+            assertEquals(
+                listOf("a"),
+                holder.state.value.visibleEvents
+                    .map { it.eventId },
+            )
             assertTrue(source.catalogCalls.isEmpty())
 
             // Drop the still-pending debounce rather than waiting out its five
