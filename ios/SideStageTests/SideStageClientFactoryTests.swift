@@ -176,6 +176,7 @@ final class SideStageClientFactoryTests: XCTestCase {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // SideStageTests
             .deletingLastPathComponent() // ios
+            .deletingLastPathComponent() // repository root
         let gradlePath = repositoryRoot.appendingPathComponent("android/app/build.gradle.kts")
         let gradle = try String(contentsOf: gradlePath, encoding: .utf8)
         let expression = try NSRegularExpression(
