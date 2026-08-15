@@ -428,15 +428,14 @@ impl ApiClient {
     }
 
     pub(crate) fn request(&self, method: Method, url: Url) -> RequestBuilder {
-        let request = self.http.request(method, url);
-        match self
-            .session
-            .as_ref()
-            .and_then(|session| session.access_token.as_deref())
-        {
-            Some(token) => request.bearer_auth(token),
-            None => request,
+        let mut request = self.http.request(method, url);
+        if let Some(session) = &self.session {
+            request = request.header("x-demo-principal", session.buyer_id.as_str());
+            if let Some(token) = session.access_token.as_deref() {
+                request = request.bearer_auth(token);
+            }
         }
+        request
     }
 
     pub(crate) fn endpoint(&self, segments: &[&str]) -> Result<Url, ApiError> {
@@ -1044,6 +1043,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/cart/items"))
             .and(header("authorization", "Bearer mobile-token"))
+            .and(header("x-demo-principal", "buyer-mobile"))
             .and(body_json(json!({
                 "cartId": "cart-1",
                 "productId": "mug/red",
@@ -1083,6 +1083,7 @@ mod tests {
         let shipping_address = address();
         Mock::given(method("POST"))
             .and(path("/shipping/rates"))
+            .and(header("x-demo-principal", "buyer-mobile"))
             .and(body_json(json!({
                 "cartId": "cart-1",
                 "address": shipping_address
@@ -1101,6 +1102,7 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path("/checkout/sessions"))
+            .and(header("x-demo-principal", "buyer-mobile"))
             .and(body_json(json!({
                 "cartId": "cart-1",
                 "buyerId": "buyer-mobile",
