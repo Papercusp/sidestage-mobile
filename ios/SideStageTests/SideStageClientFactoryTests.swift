@@ -111,7 +111,8 @@ final class SideStageClientFactoryTests: XCTestCase {
                 bundle: .main,
                 environment: ["SIDESTAGE_API_BASE_URL": ""]
             ),
-            SideStageClientFactory.defaultBaseURL
+            "https://sidestage.buyrestart.com/api",
+            "an empty environment override must fall through to the installed bundle configuration"
         )
     }
 
