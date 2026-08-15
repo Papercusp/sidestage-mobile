@@ -69,23 +69,30 @@ targets:
         optional: true
     dependencies:
       - target: SideStageCore
+    # Xcode's generated-plist pipeline only accepts a supported subset of
+    # INFOPLIST_KEY_* settings; arbitrary app keys are silently dropped. Let
+    # XcodeGen materialize the plist into the ignored build directory instead.
+    # The custom values still expand from build settings, so CI or a named
+    # configuration can override them without editing Swift or this plist.
+    info:
+      path: build/SideStage-Info.plist
+      properties:
+        CFBundleDisplayName: SideStage
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        SideStageApiBaseUrl: "$(SIDESTAGE_API_BASE_URL)"
+        SideStageBuyerId: "$(SIDESTAGE_BUYER_ID)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile
         PRODUCT_NAME: SideStage
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: SideStage
         # Ship a click-and-go simulator build: localhost inside an iOS
         # simulator is not the Linux host or the public SideStage API. Keep
-        # these as build settings so a named Xcode configuration or CI job can
-        # override them without editing Swift, then project the resolved values
-        # into the generated app Info.plist for the factory to read.
+        # these as build settings so the generated Info.plist above can expand
+        # an override supplied by a named Xcode configuration or CI job.
         SIDESTAGE_API_BASE_URL: "https://sidestage.buyrestart.com/api"
         SIDESTAGE_BUYER_ID: "buyer-ff39f82b"
-        INFOPLIST_KEY_SideStageApiBaseUrl: "$(SIDESTAGE_API_BASE_URL)"
-        INFOPLIST_KEY_SideStageBuyerId: "$(SIDESTAGE_BUYER_ID)"
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         CODE_SIGN_STYLE: Automatic
         SUPPORTS_MACCATALYST: NO
         TARGETED_DEVICE_FAMILY: "1"
