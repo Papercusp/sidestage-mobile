@@ -81,17 +81,23 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # The simulator's demo API is the Linux host behind QEMU's local
+        # gateway. Keep ATS enabled for public traffic while declaring this
+        # local-IP use explicitly.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: "SideStage connects to the local demo API used by this test environment."
         SideStageApiBaseUrl: "$(SIDESTAGE_API_BASE_URL)"
         SideStageBuyerId: "$(SIDESTAGE_BUYER_ID)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile
         PRODUCT_NAME: SideStage
-        # Ship a click-and-go simulator build: localhost inside an iOS
-        # simulator is not the Linux host or the public SideStage API. Keep
-        # these as build settings so the generated Info.plist above can expand
-        # an override supplied by a named Xcode configuration or CI job.
-        SIDESTAGE_API_BASE_URL: "https://sidestage.buyrestart.com/api"
+        # Ship a click-and-go demo build. Both Android's emulator and the iOS
+        # simulator inside the Mac VM reach the Linux-hosted demo API through
+        # the QEMU/Android gateway at 10.0.2.2. Keep this as a build setting so
+        # a named Xcode configuration or CI job can still override it.
+        SIDESTAGE_API_BASE_URL: "http://10.0.2.2:3100"
         SIDESTAGE_BUYER_ID: "buyer-ff39f82b"
         CODE_SIGN_STYLE: Automatic
         SUPPORTS_MACCATALYST: NO

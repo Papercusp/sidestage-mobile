@@ -111,22 +111,46 @@ final class SideStageClientFactoryTests: XCTestCase {
                 bundle: .main,
                 environment: ["SIDESTAGE_API_BASE_URL": ""]
             ),
-            "https://sidestage.buyrestart.com/api",
+            "http://10.0.2.2:3100",
             "an empty environment override must fall through to the installed bundle configuration"
         )
     }
 
-    /// A simulator installs the generated app bundle, not an editor's shell
-    /// environment. Prove that the bundle is useful as installed: it carries a
-    /// public API and the shared sandbox buyer, never resolves to localhost,
-    /// and can reach that API from the hosted simulator test process.
-    func testInstalledAppConfigurationReachesThePublicAPI() async throws {
+    /// Cross-client parity guard. The iOS and Android shells are the same buyer
+    /// experience, so their checked-in defaults must resolve to one catalog
+    /// authority. Read Android's actual Gradle writer instead of copying its
+    /// expected value into a second assertion that could drift independently.
+    func testInstalledAppConfigurationMatchesAndroidDemoAPI() throws {
         let baseURL = SideStageClientFactory.resolveBaseURL(bundle: .main, environment: [:])
         let buyerID = SideStageClientFactory.resolveBuyerID(bundle: .main, environment: [:])
 
-        XCTAssertEqual(baseURL, "https://sidestage.buyrestart.com/api")
+        XCTAssertEqual(baseURL, try androidDefaultAPIBaseURL())
+        XCTAssertEqual(baseURL, "http://10.0.2.2:3100")
         XCTAssertEqual(buyerID, "buyer-ff39f82b")
         XCTAssertFalse(baseURL.contains("localhost"))
+    }
+
+    /// The local demo route must not weaken transport policy for unrelated
+    /// hosts. iOS 17+ supports a scoped local-network ATS allowance, so a broad
+    /// NSAllowsArbitraryLoads escape hatch would be a regression.
+    func testInstalledAppDeclaresOnlyLocalNetworkAccess() throws {
+        let transport = try XCTUnwrap(
+            Bundle.main.object(forInfoDictionaryKey: "NSAppTransportSecurity") as? [String: Any]
+        )
+        XCTAssertEqual(transport["NSAllowsLocalNetworking"] as? Bool, true)
+        XCTAssertNil(transport["NSAllowsArbitraryLoads"])
+
+        let purpose = try XCTUnwrap(
+            Bundle.main.object(forInfoDictionaryKey: "NSLocalNetworkUsageDescription") as? String
+        )
+        XCTAssertFalse(purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    /// A simulator installs the generated app bundle, not an editor's shell
+    /// environment. Prove that the configured demo authority is reachable from
+    /// the hosted simulator test process.
+    func testInstalledAppConfigurationReachesTheDemoAPI() async throws {
+        let baseURL = SideStageClientFactory.resolveBaseURL(bundle: .main, environment: [:])
 
         guard var healthComponents = URLComponents(string: baseURL) else {
             return XCTFail("generated SideStageApiBaseUrl is not a URL: \(baseURL)")
@@ -146,5 +170,23 @@ final class SideStageClientFactoryTests: XCTestCase {
             JSONSerialization.jsonObject(with: data) as? [String: Any]
         )
         XCTAssertEqual(body["status"] as? String, "ok")
+    }
+
+    private func androidDefaultAPIBaseURL() throws -> String {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // SideStageTests
+            .deletingLastPathComponent() // ios
+        let gradlePath = repositoryRoot.appendingPathComponent("android/app/build.gradle.kts")
+        let gradle = try String(contentsOf: gradlePath, encoding: .utf8)
+        let expression = try NSRegularExpression(
+            pattern: #"providers\.gradleProperty\("sidestageApiBaseUrl"\)\.getOrElse\("([^"]+)"\)"#
+        )
+        let sourceRange = NSRange(gradle.startIndex..., in: gradle)
+        let match = try XCTUnwrap(
+            expression.firstMatch(in: gradle, range: sourceRange),
+            "could not find Android's sidestageApiBaseUrl default in \(gradlePath.path)"
+        )
+        let valueRange = try XCTUnwrap(Range(match.range(at: 1), in: gradle))
+        return String(gradle[valueRange])
     }
 }
