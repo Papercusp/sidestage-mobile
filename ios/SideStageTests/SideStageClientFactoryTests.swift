@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import Foundation
 import XCTest
 @testable import SideStage
 import SideStageCore
@@ -112,5 +113,37 @@ final class SideStageClientFactoryTests: XCTestCase {
             ),
             SideStageClientFactory.defaultBaseURL
         )
+    }
+
+    /// A simulator installs the generated app bundle, not an editor's shell
+    /// environment. Prove that the bundle is useful as installed: it carries a
+    /// public API and the shared sandbox buyer, never resolves to localhost,
+    /// and can reach that API from the hosted simulator test process.
+    func testInstalledAppConfigurationReachesThePublicAPI() async throws {
+        let baseURL = SideStageClientFactory.resolveBaseURL(bundle: .main, environment: [:])
+        let buyerID = SideStageClientFactory.resolveBuyerID(bundle: .main, environment: [:])
+
+        XCTAssertEqual(baseURL, "https://sidestage.buyrestart.com/api")
+        XCTAssertEqual(buyerID, "buyer-ff39f82b")
+        XCTAssertFalse(baseURL.contains("localhost"))
+
+        guard var healthComponents = URLComponents(string: baseURL) else {
+            return XCTFail("generated SideStageApiBaseUrl is not a URL: \(baseURL)")
+        }
+        healthComponents.path = "/healthz"
+        healthComponents.query = nil
+        healthComponents.fragment = nil
+        guard let healthURL = healthComponents.url else {
+            return XCTFail("could not derive /healthz from generated API URL: \(baseURL)")
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: healthURL)
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 200)
+
+        let body = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        XCTAssertEqual(body["status"] as? String, "ok")
     }
 }

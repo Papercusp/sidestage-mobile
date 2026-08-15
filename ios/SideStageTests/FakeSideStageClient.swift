@@ -49,6 +49,7 @@ final class FakeSideStageClient: SideStageClientProtocol {
     var createCheckoutSessionResult: Result<CheckoutSessionResponse, Error>?
     var confirmCheckoutResult: Result<CheckoutConfirmation, Error>?
     var ordersResult: Result<[CheckoutOrder], Error>?
+    var orderHistoryResult: Result<[Order], Error>?
     var placeBidResult: Result<LiveAuction, Error>?
 
     // MARK: - Recorded calls
@@ -145,6 +146,11 @@ final class FakeSideStageClient: SideStageClientProtocol {
     func orders() async throws -> [CheckoutOrder] {
         guard let ordersResult else { throw Self.unimplemented("orders") }
         return try ordersResult.get()
+    }
+
+    func orderHistory() async throws -> [Order] {
+        guard let orderHistoryResult else { throw Self.unimplemented("orderHistory") }
+        return try orderHistoryResult.get()
     }
 
     // MARK: - Live event

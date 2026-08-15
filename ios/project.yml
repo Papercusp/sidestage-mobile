@@ -75,6 +75,15 @@ targets:
         PRODUCT_NAME: SideStage
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: SideStage
+        # Ship a click-and-go simulator build: localhost inside an iOS
+        # simulator is not the Linux host or the public SideStage API. Keep
+        # these as build settings so a named Xcode configuration or CI job can
+        # override them without editing Swift, then project the resolved values
+        # into the generated app Info.plist for the factory to read.
+        SIDESTAGE_API_BASE_URL: "https://sidestage.buyrestart.com/api"
+        SIDESTAGE_BUYER_ID: "buyer-ff39f82b"
+        INFOPLIST_KEY_SideStageApiBaseUrl: "$(SIDESTAGE_API_BASE_URL)"
+        INFOPLIST_KEY_SideStageBuyerId: "$(SIDESTAGE_BUYER_ID)"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         CODE_SIGN_STYLE: Automatic
