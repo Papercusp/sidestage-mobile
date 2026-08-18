@@ -40,13 +40,8 @@ android {
                 providers.gradleProperty("sidestageApiBaseUrl").getOrElse("http://10.0.2.2:3100"),
             ),
         )
-        buildConfigField(
-            "String",
-            "SIDESTAGE_MEDIA_BASE_URL",
-            buildConfigString(
-                providers.gradleProperty("sidestageMediaBaseUrl").getOrElse("http://10.0.2.2:8888"),
-            ),
-        )
+        // No media base URL: playback addresses are SERVER-computed
+        // (EventSummary.playbackUrl, D-035) — the client derives nothing.
         buildConfigField(
             "String",
             "SIDESTAGE_BUYER_ID",
