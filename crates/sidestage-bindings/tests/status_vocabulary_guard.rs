@@ -142,7 +142,12 @@ fn the_statuses_swift_treats_as_success_are_ones_the_bindings_can_emit() {
     ] {
         let value = swift_string_constant(&swift, constant)
             .unwrap_or_else(|| panic!("CheckoutPresentation.{constant} is missing or reshaped"));
-        assert_emittable(constant, &value, enum_name, &emitted_by_match(&bindings, enum_name));
+        assert_emittable(
+            constant,
+            &value,
+            enum_name,
+            &emitted_by_match(&bindings, enum_name),
+        );
     }
 }
 
@@ -175,14 +180,18 @@ fn the_pins_reject_what_they_are_supposed_to_reject() {
             "paidPaymentStatus",
             "completed",
             "PaymentResultStatus",
-            &["paid", "failed", "needs-configuration"].map(String::from).into(),
+            &["paid", "failed", "needs-configuration"]
+                .map(String::from)
+                .into(),
         )
     });
 
     rejects("a vocabulary that drifted from the match arms", || {
         assert_pinned(
             "payment status",
-            &["paid", "failed", "needs-configuration"].map(String::from).into(),
+            &["paid", "failed", "needs-configuration"]
+                .map(String::from)
+                .into(),
             &["paid", "failed"].map(String::from).into(),
         )
     });
@@ -195,7 +204,9 @@ fn the_pins_reject_what_they_are_supposed_to_reject() {
     rejects("an unread Swift source", || {
         assert_pinned(
             "payment status",
-            &["paid", "failed", "needs-configuration"].map(String::from).into(),
+            &["paid", "failed", "needs-configuration"]
+                .map(String::from)
+                .into(),
             &BTreeSet::new(),
         )
     });
@@ -242,6 +253,9 @@ fn the_extractors_read_what_they_claim_to_read() {
         swift_string_set(swift_fixture, "absent").is_none(),
         "a missing declaration must be None, never an empty set"
     );
-    assert_eq!(swift_string_constant(swift_fixture, "one").as_deref(), Some("paid"));
+    assert_eq!(
+        swift_string_constant(swift_fixture, "one").as_deref(),
+        Some("paid")
+    );
     assert!(swift_string_constant(swift_fixture, "absent").is_none());
 }
