@@ -31,6 +31,7 @@ private fun event(
         startsAt = null,
         endedAt = null,
         thumbnailUrl = null,
+        playbackUrl = null,
         viewers = 3uL,
     )
 

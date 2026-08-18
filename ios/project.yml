@@ -31,6 +31,17 @@ configs:
   Debug: debug
   Release: release
 
+# Google's libwebrtc, prebuilt for iOS (the maintained community
+# distribution). The WHEP viewer (WI-39800) drives it; everything above the
+# engine — signaling, retry policy, copy — is the shared Rust core's (D-036).
+# tools/verify-ios-typecheck.sh runs plain swiftc with no SPM resolution, so
+# WebRTC-touching Swift is guarded on `canImport(WebRTC)` and this package is
+# exercised only by real Xcode builds.
+packages:
+  WebRTC:
+    url: https://github.com/stasel/WebRTC
+    from: 120.0.0
+
 targets:
   SideStageCore:
     type: framework
@@ -69,6 +80,7 @@ targets:
         optional: true
     dependencies:
       - target: SideStageCore
+      - package: WebRTC
     # Xcode's generated-plist pipeline only accepts a supported subset of
     # INFOPLIST_KEY_* settings; arbitrary app keys are silently dropped. Let
     # XcodeGen materialize the plist into the ignored build directory instead.

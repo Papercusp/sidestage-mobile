@@ -431,9 +431,13 @@ mod tests {
         assert!(sdp_has_ice_candidate(
             "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=candidate:1 1 udp 2122260223 192.0.2.1 54321 typ host\r\n"
         ));
-        assert!(!sdp_has_ice_candidate("v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n"));
+        assert!(!sdp_has_ice_candidate(
+            "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n"
+        ));
         // Mentioned mid-line (e.g. inside another attribute) is not a candidate.
-        assert!(!sdp_has_ice_candidate("v=0\r\na=note about a=candidate: syntax\r\n"));
+        assert!(!sdp_has_ice_candidate(
+            "v=0\r\na=note about a=candidate: syntax\r\n"
+        ));
     }
 
     #[test]

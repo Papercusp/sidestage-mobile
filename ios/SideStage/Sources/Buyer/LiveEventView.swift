@@ -47,7 +47,11 @@ struct LiveEventView: View {
                     viewers: model.event?.viewers,
                     isLive: model.event.map { $0.status == .live } ?? true,
                     connection: model.connection,
-                    streamError: model.streamError
+                    streamError: model.streamError,
+                    playback: model.playback,
+                    hasPlayback: model.hasStreamPlayback,
+                    videoTrack: model.videoTrack,
+                    toggleStream: { model.toggleStream() }
                 )
 
                 if let product = model.onDeckProduct {
@@ -89,10 +93,10 @@ struct LiveEventView: View {
 /// The video surface.
 ///
 /// The thumbnail is the poster, exactly as the web player uses it: the room has
-/// a face before any stream arrives, instead of a black rectangle. There is no
-/// player here yet on purpose — no playback URL crosses the core's API today
-/// (`EventSummary` carries a thumbnail and nothing else), and inventing one
-/// client-side would be a second source of truth about where the stream lives.
+/// a face before any stream arrives, instead of a black rectangle. The player
+/// itself is the WHEP viewer (WI-39800): when the buyer connects, the remote
+/// track replaces the poster, driven by the `playbackUrl` the API serves
+/// (D-035 — the server owns where the stream lives, clients derive nothing).
 private struct StageSurface: View {
     let title: String
     let thumbnailURL: String?
@@ -100,12 +104,19 @@ private struct StageSurface: View {
     let isLive: Bool
     let connection: LiveConnectionState
     let streamError: String?
+    let playback: WhepPlayback
+    let hasPlayback: Bool
+    let videoTrack: WhepVideoTrack?
+    let toggleStream: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack {
                 Rectangle().fill(SideStageTokens.Semantic.stage)
-                if let thumbnailURL, let url = URL(string: thumbnailURL) {
+                if playback.isActive {
+                    WhepVideoView(track: videoTrack)
+                        .accessibilityIdentifier("buyer.event.videoSurface")
+                } else if let thumbnailURL, let url = URL(string: thumbnailURL) {
                     AsyncImage(url: url) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
                     } placeholder: {
@@ -133,6 +144,24 @@ private struct StageSurface: View {
                         ConnectionChip(state: connection)
                     }
                     Spacer()
+                    HStack(alignment: .center, spacing: 10) {
+                        Text(playback.statusLabel(hasPlaybackUrl: hasPlayback))
+                            .font(.caption)
+                            .foregroundStyle(SideStageTokens.Semantic.text)
+                            .lineLimit(2)
+                            .accessibilityIdentifier("buyer.event.streamStatus")
+                        Spacer()
+                        if hasPlayback {
+                            Button(action: toggleStream) {
+                                Text(playback.buttonLabel)
+                                    .font(.caption.bold())
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(SideStageTokens.Semantic.accent)
+                            .foregroundStyle(SideStageTokens.Component.primaryButtonText)
+                            .accessibilityIdentifier("buyer.event.streamToggle")
+                        }
+                    }
                     if let viewers {
                         HStack {
                             Label(

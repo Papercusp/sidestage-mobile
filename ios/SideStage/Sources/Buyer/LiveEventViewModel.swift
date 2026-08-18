@@ -49,6 +49,12 @@ final class LiveEventViewModel {
     /// on the next attempt rather than on a timer, so it cannot vanish mid-read.
     private(set) var bidError: String?
     private(set) var streamError: String?
+
+    /// The WHEP player's state and remote track (WI-39800). Distinct from
+    /// `connection`, which is the DATA feed: the room's snapshots keep
+    /// flowing whether or not the buyer is watching the video.
+    private(set) var playback: WhepPlayback = .idle
+    private(set) var videoTrack: WhepVideoTrack?
     /// Cart state is read straight off the shared `CartStore` rather than
     /// mirrored here. The live room, the cart screen and checkout all have to
     /// agree on one cart, and a local copy is a copy that drifts — these three
@@ -63,6 +69,7 @@ final class LiveEventViewModel {
 
     private var sync: LiveEventSyncProtocol?
     private var streamTask: Task<Void, Never>?
+    private var player: WhepPlayerController?
 
     /// The auction identity the bid field was last pre-filled for.
     ///
@@ -104,6 +111,10 @@ final class LiveEventViewModel {
         sync?.stop()
         sync = nil
         connection = .connecting
+        player?.disconnect()
+        player = nil
+        playback = .idle
+        videoTrack = nil
     }
 
     private func loadEventSummary() async {
@@ -113,6 +124,29 @@ final class LiveEventViewModel {
             // A missing summary costs the header its title and poster; the room
             // itself still works, so this is not worth blocking the screen on.
             event = nil
+        }
+        // The player exists exactly when the API names a playback location
+        // (D-035: the server computes it, clients derive nothing). Connecting
+        // is the buyer's explicit choice, mirroring the Android stage.
+        if let playbackUrl = event?.playbackUrl {
+            player = WhepPlayerController(
+                playbackUrl: playbackUrl,
+                onPlayback: { [weak self] state in self?.playback = state },
+                onVideoTrack: { [weak self] track in self?.videoTrack = track }
+            )
+        }
+    }
+
+    // MARK: - Stream playback
+
+    var hasStreamPlayback: Bool { event?.playbackUrl != nil }
+
+    func toggleStream() {
+        guard let player else { return }
+        if playback.isActive {
+            player.disconnect()
+        } else {
+            player.connect()
         }
     }
 
