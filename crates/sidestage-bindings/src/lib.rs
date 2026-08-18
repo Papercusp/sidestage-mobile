@@ -122,6 +122,7 @@ pub struct EventSummary {
     pub starts_at: Option<String>,
     pub ended_at: Option<String>,
     pub thumbnail_url: Option<String>,
+    pub playback_url: Option<String>,
     pub viewers: u64,
 }
 
@@ -136,6 +137,7 @@ impl From<core::EventSummary> for EventSummary {
             starts_at: event.starts_at,
             ended_at: event.ended_at,
             thumbnail_url: event.thumbnail_url,
+            playback_url: event.playback_url,
             viewers: event.viewers,
         }
     }

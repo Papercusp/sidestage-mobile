@@ -41,6 +41,10 @@ pub struct EventSummary {
     pub ended_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thumbnail_url: Option<String>,
+    /// Full WHEP endpoint, server-computed (D-035). None on an API too old to
+    /// serve it, or a deployment with no media plane — never derived here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playback_url: Option<String>,
     pub viewers: u64,
 }
 
@@ -455,6 +459,8 @@ mod tests {
         assert_eq!(event.starts_at, None);
         assert_eq!(event.ended_at, None);
         assert_eq!(event.thumbnail_url, None);
+        // An API predating D-035 serves no playbackUrl; that must stay decodable.
+        assert_eq!(event.playback_url, None);
 
         let variant: CatalogVariant = serde_json::from_value(json!({
             "id": "product-minimal",

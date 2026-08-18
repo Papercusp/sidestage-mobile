@@ -46,6 +46,7 @@ dictionary EventSummary {
     string? starts_at;
     string? ended_at;
     string? thumbnail_url;
+    string? playback_url;
     u64 viewers;
 };
 

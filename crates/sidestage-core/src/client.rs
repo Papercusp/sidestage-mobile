@@ -822,6 +822,7 @@ mod tests {
             "startsAt": "2026-08-14T12:00:00.000Z",
             "endedAt": null,
             "thumbnailUrl": "https://example.test/drop.png",
+            "playbackUrl": "https://media.example.test/sidestage-sunday-drop/whep",
             "viewers": 14
         })
     }
@@ -985,9 +986,12 @@ mod tests {
 
         let client = ApiClient::new(format!("{}/api", server.uri())).unwrap();
         assert_eq!(client.events().await.unwrap().len(), 1);
+        let event = client.event("sunday-drop").await.unwrap();
+        assert_eq!(event.seller_name, "Marsh & Co Vintage");
+        // D-035: playback location arrives FROM the API; the client derives nothing.
         assert_eq!(
-            client.event("sunday-drop").await.unwrap().seller_name,
-            "Marsh & Co Vintage"
+            event.playback_url.as_deref(),
+            Some("https://media.example.test/sidestage-sunday-drop/whep")
         );
     }
 
