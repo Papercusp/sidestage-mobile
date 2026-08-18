@@ -12,6 +12,7 @@ mod client;
 mod models;
 mod orders;
 mod realtime;
+mod whep;
 
 pub use cart::*;
 pub use checkout::*;
@@ -21,6 +22,7 @@ pub use client::{
 pub use models::*;
 pub use orders::*;
 pub use realtime::*;
+pub use whep::*;
 
 /// Return the core crate version baked into the native library.
 pub fn version() -> String {

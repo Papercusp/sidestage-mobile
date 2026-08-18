@@ -1246,6 +1246,185 @@ pub fn host_smoke() -> Result<String, ApiError> {
     ))
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum WhepError {
+    #[error("the stream publisher has not started yet")]
+    PublisherNotReady,
+    #[error("invalid WHEP endpoint URL: {detail}")]
+    InvalidEndpoint { detail: String },
+    #[error("WHEP transport failed: {detail}")]
+    Transport { detail: String },
+    #[error("media server returned HTTP {status}: {detail}")]
+    Http { status: u16, detail: String },
+    #[error("media server returned an empty SDP answer")]
+    EmptyAnswer,
+}
+
+impl From<core::WhepError> for WhepError {
+    fn from(error: core::WhepError) -> Self {
+        match error {
+            core::WhepError::PublisherNotReady => Self::PublisherNotReady,
+            core::WhepError::InvalidEndpoint(detail) => Self::InvalidEndpoint { detail },
+            core::WhepError::Transport(error) => Self::Transport {
+                detail: error.to_string(),
+            },
+            core::WhepError::Http { status, detail } => Self::Http { status, detail },
+            core::WhepError::EmptyAnswer => Self::EmptyAnswer,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WhepIceServer {
+    pub urls: String,
+    pub username: Option<String>,
+    pub credential: Option<String>,
+}
+
+impl From<core::WhepIceServer> for WhepIceServer {
+    fn from(server: core::WhepIceServer) -> Self {
+        Self {
+            urls: server.urls,
+            username: server.username,
+            credential: server.credential,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WhepAnswer {
+    pub sdp: String,
+    pub resource_url: Option<String>,
+}
+
+impl From<core::WhepAnswer> for WhepAnswer {
+    fn from(answer: core::WhepAnswer) -> Self {
+        Self {
+            sdp: answer.sdp,
+            resource_url: answer.resource_url,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PeerConnectionState {
+    New,
+    Connecting,
+    Connected,
+    Disconnected,
+    Failed,
+    Closed,
+}
+
+impl From<PeerConnectionState> for core::PeerConnectionState {
+    fn from(state: PeerConnectionState) -> Self {
+        match state {
+            PeerConnectionState::New => Self::New,
+            PeerConnectionState::Connecting => Self::Connecting,
+            PeerConnectionState::Connected => Self::Connected,
+            PeerConnectionState::Disconnected => Self::Disconnected,
+            PeerConnectionState::Failed => Self::Failed,
+            PeerConnectionState::Closed => Self::Closed,
+        }
+    }
+}
+
+/// WHEP publisher-not-ready backoff (WI-39733); see the core for the schedule.
+pub fn publisher_retry_delay_ms(attempt: u32) -> Option<u64> {
+    core::publisher_retry_delay_ms(attempt)
+}
+
+/// Only `Failed` means the media is gone for good (WI-39747).
+pub fn is_lost_connection_state(state: PeerConnectionState) -> bool {
+    core::is_lost_connection_state(state.into())
+}
+
+/// Identical copy to the web buyer's waiting state.
+pub fn waiting_for_publisher_message() -> String {
+    core::WAITING_FOR_PUBLISHER_MESSAGE.to_string()
+}
+
+/// Identical copy to the web buyer's spent-schedule state.
+pub fn publisher_absent_message() -> String {
+    core::PUBLISHER_ABSENT_MESSAGE.to_string()
+}
+
+/// HTTP signaling against one WHEP endpoint. Owns its own runtime for the
+/// same reason `SideStageClient` does: UniFFI async methods are polled by the
+/// foreign executor, which is not a Tokio runtime.
+pub struct WhepSignaling {
+    inner: core::WhepSignaling,
+    runtime: std::sync::Arc<tokio::runtime::Runtime>,
+}
+
+impl WhepSignaling {
+    pub fn new() -> Result<Self, WhepError> {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .thread_name("sidestage-whep")
+            .build()
+            .map_err(|error| WhepError::Transport {
+                detail: format!("could not start the WHEP runtime: {error}"),
+            })?;
+        Ok(Self {
+            inner: core::WhepSignaling::new(),
+            runtime: std::sync::Arc::new(runtime),
+        })
+    }
+
+    pub async fn discover_ice_servers(
+        &self,
+        endpoint: String,
+    ) -> Result<Vec<WhepIceServer>, WhepError> {
+        let signaling = self.inner.clone();
+        self.on_runtime("ICE discovery", async move {
+            signaling.discover_ice_servers(&endpoint).await
+        })
+        .await?
+        .map(|servers| servers.into_iter().map(Into::into).collect())
+        .map_err(Into::into)
+    }
+
+    pub async fn post_offer(
+        &self,
+        endpoint: String,
+        offer_sdp: String,
+    ) -> Result<WhepAnswer, WhepError> {
+        let signaling = self.inner.clone();
+        self.on_runtime("WHEP offer", async move {
+            signaling.post_offer(&endpoint, &offer_sdp).await
+        })
+        .await?
+        .map(Into::into)
+        .map_err(Into::into)
+    }
+
+    pub async fn delete_resource(&self, resource_url: String) -> Result<(), WhepError> {
+        let signaling = self.inner.clone();
+        self.on_runtime("WHEP session cleanup", async move {
+            signaling.delete_resource(&resource_url).await
+        })
+        .await?
+        .map_err(Into::into)
+    }
+
+    /// Same two-layer result as `SideStageClient::on_runtime`: the outer error
+    /// is the runtime dropping the task, the inner one the request's own.
+    async fn on_runtime<F, T>(&self, what: &'static str, future: F) -> Result<T, WhepError>
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        self.runtime
+            .spawn(future)
+            .await
+            .map_err(|error| WhepError::Transport {
+                detail: format!("the WHEP runtime dropped the {what} request: {error}"),
+            })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -14,6 +14,24 @@ namespace sidestage {
     /// The inclusive per-product cart ceiling. Shared so a native quantity
     /// stepper bounds itself from the core instead of hardcoding the limit.
     u32 max_cart_quantity();
+
+    /// WHEP publisher-not-ready backoff (WI-39733): how long to wait before
+    /// re-offering after `attempt` (0-based) failed offers, or null once the
+    /// bounded schedule (~96s) is spent and the shell should surface
+    /// `publisher_absent_message` with an explicit retry.
+    u64? publisher_retry_delay_ms(u32 attempt);
+
+    /// Whether an ESTABLISHED peer connection's media is gone for good
+    /// (WI-39747): only `Failed` — `Disconnected` is transient and must not
+    /// tear down a working stream, `Closed` is a deliberate stop.
+    boolean is_lost_connection_state(PeerConnectionState state);
+
+    /// Copy shown while a live room waits for the seller's camera. Shared so
+    /// every surface (web included) says exactly the same thing.
+    string waiting_for_publisher_message();
+
+    /// Copy shown once the publisher wait is spent, next to a retry control.
+    string publisher_absent_message();
 };
 
 [Error]
@@ -410,4 +428,65 @@ interface SideStageClient {
     /// no longer clears the current price.
     [Throws=ApiError, Async]
     LiveAuction place_bid(PlaceBidRequest input);
+};
+
+/// A failure from the WHEP signaling path (plan decision D-036: the shared
+/// crate owns signaling + reconnect policy; the shells own only the WebRTC
+/// engine and track attachment).
+[Error]
+interface WhepError {
+    /// HTTP 404: the event path has no publisher yet (WI-39733). Retry on the
+    /// `publisher_retry_delay_ms` schedule instead of latching an error.
+    PublisherNotReady();
+    InvalidEndpoint(string detail);
+    Transport(string detail);
+    Http(u16 status, string detail);
+    EmptyAnswer();
+};
+
+/// One ICE server advertised by the media server's endpoint OPTIONS response.
+/// Credentials are password-type (the only kind native WebRTC supports and
+/// the only kind MediaMTX emits).
+dictionary WhepIceServer {
+    string urls;
+    string? username;
+    string? credential;
+};
+
+/// The media server's accepted answer for one WHEP offer.
+dictionary WhepAnswer {
+    /// Apply as the peer connection's remote description.
+    string sdp;
+    /// Absolute session resource to DELETE on stop; null when the server
+    /// returned no Location header.
+    string? resource_url;
+};
+
+/// Peer-connection connectivity as reported by the native WebRTC engine,
+/// mirroring the standard RTCPeerConnectionState values.
+enum PeerConnectionState {
+    "New",
+    "Connecting",
+    "Connected",
+    "Disconnected",
+    "Failed",
+    "Closed",
+};
+
+/// HTTP signaling against one WHEP endpoint (the `playback_url` an
+/// EventSummary carries, D-035). The shell drives the WebRTC engine and calls
+/// these in order: discover_ice_servers -> local offer + bounded ICE gather ->
+/// post_offer -> apply answer -> (on stop) delete_resource.
+interface WhepSignaling {
+    [Throws=WhepError]
+    constructor();
+
+    [Throws=WhepError, Async]
+    sequence<WhepIceServer> discover_ice_servers(string endpoint);
+
+    [Throws=WhepError, Async]
+    WhepAnswer post_offer(string endpoint, string offer_sdp);
+
+    [Throws=WhepError, Async]
+    void delete_resource(string resource_url);
 };
