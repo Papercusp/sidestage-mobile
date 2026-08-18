@@ -66,7 +66,6 @@ object SideStageClientFactory {
         client?.let { UniFfiBuyerOrdersGateway(it, BuildConfig.SIDESTAGE_BUYER_ID) }
     }
 
-    fun streamUrl(eventId: String): String = LiveEventPresentation.streamUrl(BuildConfig.SIDESTAGE_MEDIA_BASE_URL, eventId)
 }
 
 internal class UniFfiLiveEventGateway(
@@ -83,6 +82,7 @@ internal class UniFfiLiveEventGateway(
                 title = event.title,
                 viewers = event.viewers,
                 thumbnailUrl = event.thumbnailUrl,
+                playbackUrl = event.playbackUrl,
             )
         }
 

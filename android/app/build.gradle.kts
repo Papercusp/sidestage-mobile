@@ -123,6 +123,12 @@ dependencies {
     // UniFFI's generated Kotlin bindings load libsidestage through JNA.
     implementation("net.java.dev.jna:jna:5.19.1@aar")
 
+    // WHEP live playback (WI-39800): libwebrtc via Stream's maintained
+    // distribution (org.webrtc upstream stopped publishing google-webrtc).
+    // Signaling + reconnect policy live in sidestage-core (D-036); this is
+    // only the engine and the SurfaceViewRenderer track attachment.
+    implementation("io.getstream:stream-webrtc-android:1.3.10")
+
     testImplementation("junit:junit:4.13.2")
 
     androidTestImplementation(composeBom)

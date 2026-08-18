@@ -3,9 +3,6 @@
 
 package com.sidestage.mobile.buyer
 
-import android.net.Uri
-import android.widget.MediaController
-import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -54,11 +52,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.sidestage.mobile.theme.SideStageTokens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.webrtc.RendererCommon
+import org.webrtc.SurfaceViewRenderer
+import org.webrtc.VideoTrack
+import uniffi.sidestage.waitingForPublisherMessage
 import java.time.Instant
 
 data class LiveEventUiState(
     val title: String,
     val viewers: ULong = 0u,
+    /** Server-computed WHEP endpoint (D-035); null keeps the stage playerless. */
+    val playbackUrl: String? = null,
     val connection: LiveConnectionState = LiveConnectionState.CONNECTING,
     val retryInMs: ULong? = null,
     val snapshot: LiveRoomSnapshot? = null,
@@ -92,7 +96,12 @@ class LiveEventController(
 
         runCatching { activeGateway.event(eventId) }
             .onSuccess { event ->
-                state = state.copy(title = event.title, viewers = event.viewers)
+                state =
+                    state.copy(
+                        title = event.title,
+                        viewers = event.viewers,
+                        playbackUrl = event.playbackUrl,
+                    )
             }
 
         try {
@@ -257,7 +266,7 @@ fun BuyerLiveEventScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
 
-        StreamStage(eventId = eventId)
+        StreamStage(eventId = eventId, playbackUrl = state.playbackUrl)
         RoomStats(viewers = state.viewers)
         RoomBar(
             activeCount =
@@ -294,20 +303,51 @@ fun BuyerLiveEventScreen(
     }
 }
 
+/**
+ * The live stage: a WHEP viewer driven by the SERVER's playback URL (D-035,
+ * WI-39800). All reconnect policy comes from the shared core through
+ * [WhepPlayerController]; a null [playbackUrl] (old API / unconfigured media
+ * plane) honestly renders no player at all instead of guessing an address.
+ */
 @Composable
-private fun StreamStage(eventId: String) {
-    var requested by remember(eventId) { mutableStateOf(false) }
-    var status by remember(eventId) { mutableStateOf("Ready") }
-    var videoView by remember(eventId) { mutableStateOf<VideoView?>(null) }
-    val streamUrl = remember(eventId) { SideStageClientFactory.streamUrl(eventId) }
+private fun StreamStage(
+    eventId: String,
+    playbackUrl: String?,
+) {
+    var playback by remember(eventId, playbackUrl) { mutableStateOf<WhepPlayback>(WhepPlayback.Idle) }
+    var videoTrack by remember(eventId, playbackUrl) { mutableStateOf<VideoTrack?>(null) }
+    var renderer by remember(eventId, playbackUrl) { mutableStateOf<SurfaceViewRenderer?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val controller =
+        remember(eventId, playbackUrl) {
+            playbackUrl?.let { url ->
+                WhepPlayerController(
+                    context = context,
+                    playbackUrl = url,
+                    scope = scope,
+                    onPlayback = { current -> playback = current },
+                    onVideoTrack = { track -> videoTrack = track },
+                )
+            }
+        }
 
-    DisposableEffect(eventId, requested) {
+    DisposableEffect(controller) {
+        onDispose { controller?.release() }
+    }
+
+    // The remote track and the renderer arrive independently (native callback
+    // vs composition); attach whenever both exist, detach when either goes.
+    DisposableEffect(videoTrack, renderer) {
+        val track = videoTrack
+        val view = renderer
+        if (track != null && view != null) track.addSink(view)
         onDispose {
-            videoView?.stopPlayback()
-            videoView = null
+            if (track != null && view != null) runCatching { track.removeSink(view) }
         }
     }
 
+    val active = playback is WhepPlayback.Connecting || playback is WhepPlayback.Live
     Box(
         modifier =
             Modifier
@@ -315,28 +355,19 @@ private fun StreamStage(eventId: String) {
                 .height(210.dp)
                 .background(SideStageTokens.Stage, RoundedCornerShape(16.dp)),
     ) {
-        if (requested) {
+        if (active) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
-                factory = { context ->
-                    VideoView(context).also { view ->
-                        videoView = view
-                        val controls = MediaController(context)
-                        controls.setAnchorView(view)
-                        view.setMediaController(controls)
-                        view.setOnPreparedListener { player ->
-                            player.isLooping = false
-                            status = "Live"
-                            view.start()
-                        }
-                        view.setOnErrorListener { _, _, _ ->
-                            status = "Stream unavailable"
-                            true
-                        }
-                        status = "Connecting…"
-                        view.setVideoURI(Uri.parse(streamUrl))
-                        view.requestFocus()
+                factory = { viewContext ->
+                    SurfaceViewRenderer(viewContext).also { view ->
+                        view.init(WebRtcEngine.eglBase.eglBaseContext, null)
+                        view.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+                        renderer = view
                     }
+                },
+                onRelease = { view ->
+                    renderer = null
+                    view.release()
                 },
             )
         }
@@ -353,24 +384,42 @@ private fun StreamStage(eventId: String) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(eventId, color = SideStageTokens.StageInk, style = MaterialTheme.typography.labelLarge)
                     Text(
-                        if (requested) status else "The seller stream appears here when the room is live.",
+                        when (val current = playback) {
+                            WhepPlayback.Idle ->
+                                if (playbackUrl == null) {
+                                    "Live playback isn't available for this room yet."
+                                } else {
+                                    "The seller stream appears here when the room is live."
+                                }
+                            is WhepPlayback.Connecting ->
+                                if (current.waitingForPublisher) waitingForPublisherMessage() else "Connecting…"
+                            WhepPlayback.Live -> "Live"
+                            is WhepPlayback.Failed -> current.message
+                        },
                         color = SideStageTokens.StageInk.copy(alpha = 0.75f),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                Button(
-                    onClick = {
-                        requested = !requested
-                        if (!requested) status = "Ready"
-                    },
-                    shape = RoundedCornerShape(SideStageTokens.PrimaryButtonRadius),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = SideStageTokens.Accent,
-                            contentColor = SideStageTokens.OnAccent,
-                        ),
-                ) {
-                    Text(if (requested) "Disconnect" else "Connect")
+                if (controller != null) {
+                    Button(
+                        onClick = {
+                            if (active) controller.disconnect() else controller.connect()
+                        },
+                        shape = RoundedCornerShape(SideStageTokens.PrimaryButtonRadius),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = SideStageTokens.Accent,
+                                contentColor = SideStageTokens.OnAccent,
+                            ),
+                    ) {
+                        Text(
+                            when {
+                                active -> "Disconnect"
+                                playback is WhepPlayback.Failed -> "Retry"
+                                else -> "Connect"
+                            },
+                        )
+                    }
                 }
             }
         }

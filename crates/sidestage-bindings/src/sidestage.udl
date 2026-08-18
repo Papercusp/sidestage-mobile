@@ -26,6 +26,14 @@ namespace sidestage {
     /// tear down a working stream, `Closed` is a deliberate stop.
     boolean is_lost_connection_state(PeerConnectionState state);
 
+    /// How many times a stream that DIED after working may re-arm the
+    /// publisher wait (WI-39747) before the room is called broken.
+    u32 max_loss_reconnects();
+
+    /// Whether a local SDP carries at least one `a=candidate:` line. Judges a
+    /// gathering timeout: partial-with-candidates is shippable, none is not.
+    boolean sdp_has_ice_candidate(string sdp);
+
     /// Copy shown while a live room waits for the seller's camera. Shared so
     /// every surface (web included) says exactly the same thing.
     string waiting_for_publisher_message();

@@ -115,6 +115,24 @@ pub fn publisher_retry_delay_ms(attempt: u32) -> Option<u64> {
     PUBLISHER_RETRY_DELAYS_MS.get(attempt as usize).copied()
 }
 
+/// How many times a stream that DIED after working may re-arm the publisher
+/// wait (WI-39747). Each re-entry is itself bounded (~96s), so this only caps
+/// how many separate losses are recovered from: enough for genuine network
+/// blips, few enough that a room whose publisher drops instantly and forever
+/// terminates in the honest "nobody is on camera" message instead of an
+/// endless spinner. Same value as the web buyer's `MAX_LOSS_RECONNECTS`.
+pub const MAX_LOSS_RECONNECTS: u32 = 3;
+
+/// Vanilla-ICE SDP carries its candidates inline as `a=candidate:` lines.
+///
+/// The shells use this to judge a gathering TIMEOUT: an offer that timed out
+/// but still carries host candidates is shippable (those are the candidates
+/// that actually reach MediaMTX); one with none would fail server-side with no
+/// trace, so it is the only case worth aborting locally.
+pub fn sdp_has_ice_candidate(sdp: &str) -> bool {
+    sdp.lines().any(|line| line.starts_with("a=candidate:"))
+}
+
 /// Shown while the room is live but the seller has not gone on camera yet.
 /// About the SELLER, not the media server: identical copy to the web buyer.
 pub const WAITING_FOR_PUBLISHER_MESSAGE: &str = "Waiting for the seller to start their camera…";
@@ -406,6 +424,16 @@ mod tests {
         assert_eq!(publisher_retry_delay_ms(10), None);
         // ~96s total across 10 offers — the web's documented budget.
         assert_eq!(PUBLISHER_RETRY_DELAYS_MS.iter().sum::<u64>(), 96_000);
+    }
+
+    #[test]
+    fn sdp_candidate_detection_reads_line_starts_only() {
+        assert!(sdp_has_ice_candidate(
+            "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=candidate:1 1 udp 2122260223 192.0.2.1 54321 typ host\r\n"
+        ));
+        assert!(!sdp_has_ice_candidate("v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n"));
+        // Mentioned mid-line (e.g. inside another attribute) is not a candidate.
+        assert!(!sdp_has_ice_candidate("v=0\r\na=note about a=candidate: syntax\r\n"));
     }
 
     #[test]

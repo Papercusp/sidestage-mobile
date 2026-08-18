@@ -12,6 +12,12 @@ data class LiveEventHeader(
     val title: String,
     val viewers: ULong,
     val thumbnailUrl: String?,
+    /**
+     * Full WHEP endpoint for this event, SERVER-computed (D-035 — clients
+     * derive nothing). Null on an old API or an unconfigured media plane, in
+     * which case the stage keeps its poster: honest absence, no player.
+     */
+    val playbackUrl: String? = null,
 )
 
 data class LiveProduct(
@@ -136,7 +142,6 @@ sealed interface BidAvailability {
 
 object LiveEventPresentation {
     private val bidPattern = Regex("^[0-9]+(?:\\.[0-9]{1,2})?$")
-    private val eventIdPattern = Regex("^[a-z0-9][a-z0-9-]{0,63}$")
 
     fun formatPrice(cents: Long): String = NumberFormat.getCurrencyInstance(Locale.US).format(BigDecimal.valueOf(cents, 2))
 
@@ -191,14 +196,6 @@ object LiveEventPresentation {
                 }
             }
         }
-
-    fun streamUrl(
-        baseUrl: String,
-        eventId: String,
-    ): String {
-        require(eventIdPattern.matches(eventId)) { "Invalid SideStage event id" }
-        return "${baseUrl.trimEnd('/')}/sidestage-$eventId/index.m3u8"
-    }
 
     fun bidAvailability(
         auction: LiveAuctionState?,

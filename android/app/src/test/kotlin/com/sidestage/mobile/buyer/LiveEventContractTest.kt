@@ -68,14 +68,6 @@ class LiveEventContractTest {
     }
 
     @Test
-    fun `media url follows the SideStage event room identity`() {
-        assertEquals(
-            "http://10.0.2.2:8888/sidestage-sunday-drop/index.m3u8",
-            LiveEventPresentation.streamUrl("http://10.0.2.2:8888/", "sunday-drop"),
-        )
-    }
-
-    @Test
     fun `countdown rounds a partial second up like web`() {
         assertEquals(
             63L,

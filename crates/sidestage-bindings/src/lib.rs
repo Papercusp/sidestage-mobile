@@ -1339,6 +1339,16 @@ pub fn is_lost_connection_state(state: PeerConnectionState) -> bool {
     core::is_lost_connection_state(state.into())
 }
 
+/// Loss-recovery budget for an established stream (WI-39747).
+pub fn max_loss_reconnects() -> u32 {
+    core::MAX_LOSS_RECONNECTS
+}
+
+/// Whether a local SDP carries at least one `a=candidate:` line.
+pub fn sdp_has_ice_candidate(sdp: String) -> bool {
+    core::sdp_has_ice_candidate(&sdp)
+}
+
 /// Identical copy to the web buyer's waiting state.
 pub fn waiting_for_publisher_message() -> String {
     core::WAITING_FOR_PUBLISHER_MESSAGE.to_string()
