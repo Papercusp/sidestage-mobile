@@ -36,7 +36,7 @@ scaffold-check:
 	./tools/build-scripts/verify-scaffold.sh
 
 tokens-check:
-	ruby tools/build-scripts/generate-swift-design-tokens.rb --check
+	node tools/build-scripts/generate-swift-design-tokens.mjs --check
 
 check: scaffold-check tokens-check fmt-check clippy test bindings-smoke test-android-release-provenance
 

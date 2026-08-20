@@ -31,7 +31,7 @@ required=(
     android/app/src/main/kotlin/com/sidestage/mobile/theme/SideStageTokens.kt
     android/app/src/main/kotlin/com/sidestage/mobile/theme/SideStageTheme.kt
     android/app/src/test/kotlin/com/sidestage/mobile/navigation/NavigationContractTest.kt
-    tools/build-scripts/generate-swift-design-tokens.rb
+    tools/build-scripts/generate-swift-design-tokens.mjs
     ios/SideStage/Sources/SideStageApp.swift
     ios/SideStage/Sources/Navigation/AppNavigation.swift
     ios/SideStage/Sources/Navigation/SideStageRootView.swift
