@@ -6,6 +6,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
+test -f Cargo.lock
+test -f crates/sidestage-bindings/uniffi.toml
+
 if [ "$(uname)" != "Darwin" ]; then
     echo "ERROR: build-ios.sh requires macOS." >&2
     exit 1
@@ -24,6 +27,7 @@ lipo -create \
 
 cargo run --quiet --bin uniffi-bindgen -- generate \
     crates/sidestage-bindings/src/sidestage.udl \
+    --config crates/sidestage-bindings/uniffi.toml \
     --language swift \
     --out-dir ios/SideStageCore
 

@@ -1,0 +1,53 @@
+{
+  "$doc": "SideStage iPhone consumer record for papercusp-iphone-app@0.1.0. Host alias and signing input names are non-secret; credentials remain external.",
+  "app": { "name": "sidestage-mobile-iphone", "root": "." },
+  "iphoneShell": {
+    "bundleId": "com.sidestage.mobile", "productName": "SideStage", "coreModule": "SideStageCore", "scheme": "SideStage", "projectName": "SideStage",
+    "deploymentTarget": "17.0", "swiftVersion": "5.9", "deviceTarget": "aarch64-apple-ios", "simulatorTargets": ["aarch64-apple-ios-sim", "x86_64-apple-ios"],
+    "rustLibrary": "libsidestage.a", "ffiModule": "sidestageFFI", "hostStrategy": "remote-host", "remoteHost": "avis-imac",
+    "releaseVersionInput": "SIDESTAGE_IOS_RELEASE_VERSION", "buildNumberInput": "SIDESTAGE_IOS_BUILD_NUMBER", "signingPrefix": "SIDESTAGE_IOS_RELEASE_",
+    "signingInputNames": ["SIDESTAGE_IOS_RELEASE_TEAM_ID", "SIDESTAGE_IOS_RELEASE_CODE_SIGN_IDENTITY", "SIDESTAGE_IOS_RELEASE_PROVISIONING_PROFILE"],
+    "exportMethod": "app-store-connect", "selectedCapabilities": ["media-playback", "local-networking"], "entitlementKeys": [],
+    "privacyUsageDescriptionKeys": ["NSLocalNetworkUsageDescription"], "backgroundModes": ["audio"],
+    "paths": {
+      "projectSpec": "ios/project.yml", "generatedProject": "ios/SideStage.xcodeproj", "gitignore": ".gitignore",
+      "infoPlist": "ios/SideStage/Info.plist", "privacyManifest": "ios/SideStage/Resources/PrivacyInfo.xcprivacy", "entitlements": "ios/SideStage/SideStage.entitlements",
+      "appSourceRoot": "ios/SideStage/Sources", "coreSourceRoot": "ios/SideStageCore", "unitTestRoots": ["ios/SideStageTests"], "uiTestRoots": ["ios/SideStageUITests"],
+      "buildScript": "tools/build-scripts/build-ios.sh", "hostPreflightScript": "tools/build-scripts/check-ios-build-host-health.sh",
+      "testScript": "tools/run-ios-template-tests.sh", "releaseScript": "tools/build-scripts/ios-template-release-preflight.sh",
+      "udl": "crates/sidestage-bindings/src/sidestage.udl", "uniffiConfig": "crates/sidestage-bindings/uniffi.toml", "cargoLock": "Cargo.lock",
+      "generatedSwift": "ios/SideStageCore/sidestage.swift", "ffiHeader": "ios/SideStageCore/headers/sidestageFFI.h", "moduleMap": "ios/SideStageCore/headers/module.modulemap",
+      "deviceLibrary": "target/aarch64-apple-ios/release/libsidestage.a", "simulatorLibrary": "target/ios-sim-fat/libsidestage.a", "xcframework": "ios/SideStageCore.xcframework",
+      "archive": "ios/build/SideStage.xcarchive", "exportDir": "ios/build/export", "provenanceFile": "ios/build/ios-release-provenance.json"
+    },
+    "evidenceDir": "ios/build/template-checks/iphone-shell",
+    "assertions": [
+      { "assertionId": "MOB-IOS-001", "leg": "project-generation", "command": ["xcodegen", "generate", "--spec", "ios/project.yml"], "timeoutMs": 120000 },
+      { "assertionId": "MOB-IOS-002", "leg": "xcframework", "command": ["bash", "tools/build-scripts/build-ios.sh"], "timeoutMs": 1200000 },
+      { "assertionId": "MOB-IOS-003", "leg": "swift-module", "command": ["bash", "tools/run-ios-template-tests.sh", "build-only"], "timeoutMs": 1200000 },
+      { "assertionId": "MOB-IOS-004", "leg": "host-preflight", "command": ["bash", "tools/build-scripts/check-ios-build-host-health.sh"], "timeoutMs": 120000 },
+      { "assertionId": "MOB-IOS-005", "leg": "unit", "command": ["bash", "tools/run-ios-template-tests.sh", "unit"], "timeoutMs": 1200000, "expectedOutputPattern": "Executed [1-9][0-9]* tests" },
+      { "assertionId": "MOB-IOS-005", "leg": "ui", "command": ["bash", "tools/run-ios-template-tests.sh", "ui"], "timeoutMs": 1200000, "expectedOutputPattern": "Executed [1-9][0-9]* tests" },
+      { "assertionId": "MOB-IOS-006", "leg": "privacy-capabilities", "command": ["bash", "tools/build-scripts/ios-template-release-preflight.sh", "static"], "timeoutMs": 300000 },
+      { "assertionId": "MOB-IOS-006", "leg": "archive-preflight", "command": ["bash", "tools/build-scripts/ios-template-release-preflight.sh", "archive-preflight"], "timeoutMs": 1200000 },
+      { "assertionId": "MOB-IOS-006", "leg": "signing-absence", "command": ["bash", "tools/build-scripts/ios-template-release-preflight.sh", "require-signing"], "unsetEnv": ["SIDESTAGE_IOS_RELEASE_TEAM_ID", "SIDESTAGE_IOS_RELEASE_CODE_SIGN_IDENTITY", "SIDESTAGE_IOS_RELEASE_PROVISIONING_PROFILE"], "expectedExit": "nonzero", "expectedOutputPattern": "signing|team|identity|provisioning", "timeoutMs": 300000 }
+    ]
+  },
+  "composition": {
+    "templateYamls": ["template-manifests/papercusp-iphone-app.yaml", "template-manifests/papercusp-mobile-base.yaml", "template-manifests/papercusp-iphone-shell.yaml"],
+    "decisionPointAnswers": {
+      "papercusp-iphone-app:iphone-app-purpose": "SideStage is the buyer-focused live-commerce iPhone client; this closure supplies the shared and iPhone chassis while catalog, event, cart, checkout, order, and playback behavior stays product-owned.",
+      "papercusp-mobile-base:product-domain": "Portable commerce models, validation, state transitions, serialization, and network policy live in Rust; SwiftUI owns presentation, navigation, and iPhone lifecycle.",
+      "papercusp-mobile-base:rust-msrv": "Rust 1.88 is the supported workspace MSRV.",
+      "papercusp-mobile-base:license-and-repository": "MIT, SideStage contributors, and the canonical sidestage-mobile repository metadata remain product-owned.",
+      "papercusp-mobile-base:design-token-source": "design-tokens/mobile.*.tokens.json is the source for deterministic SideStage Kotlin and Swift token outputs.",
+      "papercusp-mobile-base:optional-capabilities": "Media playback and local networking are selected on iPhone; credentials, deep links, push, analytics, crash reporting, camera, and microphone are not selected.",
+      "papercusp-mobile-base:runtime-configuration": "API base and buyer identity are explicit product configuration, commerce/media provider credentials stay server-side, and signing secrets remain external.",
+      "papercusp-iphone-shell:iphone-identity": "Bundle com.sidestage.mobile uses SideStage/SideStageCore/SideStage, a generated SideStage.xcodeproj, and SIDESTAGE_IOS_RELEASE_VERSION plus SIDESTAGE_IOS_BUILD_NUMBER.",
+      "papercusp-iphone-shell:iphone-os-floor": "Keep the iPhone deployment target at 17.0.",
+      "papercusp-iphone-shell:iphone-capabilities": "Declare local-network usage and background audio for the product-owned media seam; keep unselected entitlements and privacy prompts absent.",
+      "papercusp-iphone-shell:iphone-test-host": "Delegate XcodeGen, XCFramework, Swift module, XCTest, XCUITest, privacy, and archive preflight to named host avis-imac; incapable Linux runs are host-constrained.",
+      "papercusp-iphone-shell:iphone-release": "Use external SIDESTAGE_IOS_RELEASE_* inputs, app-store-connect export metadata, atomic archive provenance, and no distribution action in template checks."
+    }
+  }
+}

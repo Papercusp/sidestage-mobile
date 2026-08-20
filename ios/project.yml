@@ -26,6 +26,8 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: NO
+    INFOPLIST_FILE: SideStage/Info.plist
 
 configs:
   Debug: debug
@@ -81,26 +83,6 @@ targets:
     dependencies:
       - target: SideStageCore
       - package: WebRTC
-    # Xcode's generated-plist pipeline only accepts a supported subset of
-    # INFOPLIST_KEY_* settings; arbitrary app keys are silently dropped. Let
-    # XcodeGen materialize the plist into the ignored build directory instead.
-    # The custom values still expand from build settings, so CI or a named
-    # configuration can override them without editing Swift or this plist.
-    info:
-      path: build/SideStage-Info.plist
-      properties:
-        CFBundleDisplayName: SideStage
-        UILaunchScreen: {}
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        # The simulator's demo API is the Linux host behind QEMU's local
-        # gateway. Keep ATS enabled for public traffic while declaring this
-        # local-IP use explicitly.
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-        NSLocalNetworkUsageDescription: "SideStage connects to the local demo API used by this test environment."
-        SideStageApiBaseUrl: "$(SIDESTAGE_API_BASE_URL)"
-        SideStageBuyerId: "$(SIDESTAGE_BUYER_ID)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sidestage.mobile
@@ -115,6 +97,7 @@ targets:
         SUPPORTS_MACCATALYST: NO
         TARGETED_DEVICE_FAMILY: "1"
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        CODE_SIGN_ENTITLEMENTS: SideStage/SideStage.entitlements
 
   SideStageTests:
     type: bundle.unit-test
