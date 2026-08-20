@@ -14,7 +14,18 @@ xcodegen generate --spec ios/project.yml
 UDID="${SS_IOS_SIM_UDID:-$(xcrun simctl list devices available | awk -F '[()]' '/iPhone.*\((Booted|Shutdown)\)/ { print $2; exit }')}"
 [ -n "$UDID" ] || { echo "ERROR: simulator is unavailable" >&2; exit 2; }
 xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl bootstatus "$UDID" -b >/dev/null
+simulator_ready=false
+for attempt in $(seq 1 60); do
+    if xcrun simctl spawn "$UDID" launchctl print system >/dev/null 2>&1; then
+        simulator_ready=true
+        break
+    fi
+    sleep 1
+done
+[ "$simulator_ready" = true ] || {
+    echo "ERROR: simulator did not become headless-ready within 60 seconds" >&2
+    exit 2
+}
 DESTINATION="platform=iOS Simulator,id=$UDID"
 DERIVED="$REPO_ROOT/ios/build/template-checks/derived-data"
 BUILD_RESULT="$REPO_ROOT/ios/build/template-checks/build.xcresult"
