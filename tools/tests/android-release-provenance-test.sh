@@ -4,48 +4,52 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HELPER="$ROOT/tools/build-scripts/android-release-provenance.sh"
-BUILD_HELPER="$ROOT/tools/build-scripts/build-android.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-test_android_sdk_resolution() (
-    unset ANDROID_HOME ANDROID_SDK_ROOT
-    local fake_home="$TMP/fake-home"
-    mkdir -p "$fake_home/Android/Sdk"
-    HOME="$fake_home"
-    # shellcheck source=../build-scripts/build-android.sh
-    source "$BUILD_HELPER"
-    resolve_android_sdk
-    [[ "$ANDROID_HOME" == "$fake_home/Android/Sdk" ]]
-    [[ "$ANDROID_SDK_ROOT" == "$fake_home/Android/Sdk" ]]
-)
-
-test_android_sdk_resolution
+fail() {
+    echo "FAIL: $*" >&2
+    exit 1
+}
 
 git -C "$TMP" init -q
 git -C "$TMP" config user.name test
 git -C "$TMP" config user.email test@example.invalid
-printf '/android/app/build/\n/bin/\n' >"$TMP/.gitignore"
+printf '/android/app/build/\n/bin/\n/fake-sdk/\n' >"$TMP/.gitignore"
 printf 'source\n' >"$TMP/source.txt"
 git -C "$TMP" add .gitignore source.txt
 git -C "$TMP" commit -qm initial
 
 APK="$TMP/android/app/build/outputs/apk/release/app-release.apk"
 AAB="$TMP/android/app/build/outputs/bundle/release/app-release.aab"
-mkdir -p "$(dirname "$APK")" "$(dirname "$AAB")" "$TMP/bin"
+FAKE_SDK="$TMP/fake-sdk"
+APK_ANALYZER="$FAKE_SDK/cmdline-tools/latest/bin/apkanalyzer"
+mkdir -p "$(dirname "$APK")" "$(dirname "$AAB")" "$(dirname "$APK_ANALYZER")"
 dd if=/dev/zero of="$APK" bs=1024 count=2 status=none
 printf 'apk' | dd of="$APK" conv=notrunc status=none
 dd if=/dev/zero of="$AAB" bs=1024 count=3 status=none
 printf 'aab' | dd of="$AAB" conv=notrunc status=none
 
-cat >"$TMP/bin/apkanalyzer" <<'SH'
+cat >"$APK_ANALYZER" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "${FAKE_APK_VERSION:-0.1.0}"
 SH
-chmod +x "$TMP/bin/apkanalyzer"
+chmod +x "$APK_ANALYZER"
+
+if missing_sdk_error="$(
+    env -u ANDROID_HOME -u ANDROID_SDK_ROOT -u PAPERCUP_APKANALYZER \
+        PAPERCUP_MOBILE_ROOT="$TMP" \
+        "$HELPER" write 0.1.0 "$APK" "$AAB" 2>&1
+)"; then
+    fail "provenance write succeeded without ANDROID_SDK_ROOT or ANDROID_HOME"
+fi
+[[ "$missing_sdk_error" == *"ANDROID_SDK_ROOT or ANDROID_HOME is required"* ]] \
+    || fail "missing SDK failure did not explain the explicit environment contract"
 
 run_helper() {
-    PAPERCUP_MOBILE_ROOT="$TMP" PAPERCUP_APKANALYZER="$TMP/bin/apkanalyzer" "$HELPER" "$@"
+    env -u ANDROID_HOME -u PAPERCUP_APKANALYZER \
+        ANDROID_SDK_ROOT="$FAKE_SDK" PAPERCUP_MOBILE_ROOT="$TMP" \
+        "$HELPER" "$@"
 }
 
 run_helper write 0.1.0 "$APK" "$AAB" >/dev/null

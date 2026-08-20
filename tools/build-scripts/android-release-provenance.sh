@@ -38,7 +38,9 @@ resolve_apkanalyzer() {
         printf '%s\n' "$PAPERCUP_APKANALYZER"
         return 0
     fi
-    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+    [[ -n "$sdk_root" ]] \
+        || die "ANDROID_SDK_ROOT or ANDROID_HOME is required when PAPERCUP_APKANALYZER is unset"
     local analyzer="$sdk_root/cmdline-tools/latest/bin/apkanalyzer"
     [[ -x "$analyzer" ]] || die "apkanalyzer not found at $analyzer"
     printf '%s\n' "$analyzer"

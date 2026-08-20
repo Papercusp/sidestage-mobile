@@ -10,6 +10,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.sidestage.mobile.buyer.BuyerCatalogSource
+import com.sidestage.mobile.buyer.LiveAuctionState
+import com.sidestage.mobile.buyer.LiveCartResult
+import com.sidestage.mobile.buyer.LiveEventGateway
+import com.sidestage.mobile.buyer.LiveEventHeader
+import com.sidestage.mobile.buyer.LiveProduct
+import com.sidestage.mobile.buyer.LiveRoomSubscription
+import com.sidestage.mobile.buyer.LiveRoomUpdate
 import com.sidestage.mobile.buyer.UniFfiLiveEventGateway
 import com.sidestage.mobile.checkout.BuyerSessionState
 import com.sidestage.mobile.orders.BuyerOrder
@@ -36,7 +43,7 @@ class SideStageAppSmokeTest {
             SideStageTheme {
                 SideStageApp(
                     catalogSource = FakeCatalogSource(),
-                    liveEventGateway = null,
+                    liveEventGateway = FakeLiveEventGateway(),
                     checkoutGateway = null,
                     ordersGateway = FakeOrdersGateway(),
                     buyerSession = BuyerSessionState(),
@@ -60,7 +67,10 @@ class SideStageAppSmokeTest {
         composeRule.onNodeWithText("Sunday vintage drop").performClick()
 
         composeRule.onNodeWithText("Sunday vintage drop").assertIsDisplayed()
-        composeRule.onNodeWithText("Connect").assertIsDisplayed()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Connect").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Connect").assertExists()
     }
 
     @Test
@@ -112,6 +122,40 @@ private class FakeCatalogSource : BuyerCatalogSource {
         CatalogPage(emptyList(), search.page ?: 1u, search.pageSize ?: 24u, 0uL, false)
 
     override suspend fun productTypes(): List<String> = emptyList()
+}
+
+private class FakeLiveEventGateway : LiveEventGateway {
+    override val buyerId: String? = null
+
+    override suspend fun event(eventId: String): LiveEventHeader =
+        LiveEventHeader(
+            title = "Sunday vintage drop",
+            viewers = 12uL,
+            thumbnailUrl = null,
+            playbackUrl = "http://127.0.0.1:8889/sunday-drop/whep",
+        )
+
+    override fun liveEventSync(eventId: String): LiveRoomSubscription =
+        object : LiveRoomSubscription {
+            override suspend fun next(): LiveRoomUpdate? = null
+
+            override fun close() = Unit
+        }
+
+    override suspend fun placeBid(
+        auctionId: String,
+        bidderId: String,
+        amountCents: Long,
+    ): LiveAuctionState = error("not exercised by this smoke test")
+
+    override suspend fun addCartItem(
+        cartId: String?,
+        product: LiveProduct,
+    ): LiveCartResult = error("not exercised by this smoke test")
+
+    override fun suggestedBidCents(currentPriceCents: Long): Long = currentPriceCents + 200L
+
+    override fun minimumNextBidCents(currentPriceCents: Long): Long = currentPriceCents + 1L
 }
 
 private class FakeOrdersGateway : BuyerOrdersGateway {
