@@ -19,6 +19,7 @@ import SideStageCore
 import SwiftUI
 import WebRTC
 
+@MainActor
 func makePlatformWhepEngine() -> WhepEngine? { WebRTCWhepEngine() }
 
 /// Process-wide libwebrtc engine: one factory, created once — it carries
@@ -267,6 +268,7 @@ import SwiftUI
 /// No WebRTC package in this toolchain (the swiftc typecheck harness). The
 /// controller reports an honest failure instead of playing; the real Xcode
 /// build never takes this branch.
+@MainActor
 func makePlatformWhepEngine() -> WhepEngine? { nil }
 
 /// Keeps the stage's call site typecheckable without the package.
