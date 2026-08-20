@@ -43,6 +43,9 @@ xcodebuild test-without-building -project ios/SideStage.xcodeproj -scheme SideSt
     -destination "$DESTINATION" -derivedDataPath "$DERIVED" \
     -only-testing:"$BUNDLE" -resultBundlePath "$RESULT"
 xcrun xcresulttool get test-results tests --path "$RESULT" --format json > "$SUMMARY"
-testsCount="$(grep -o '"testIdentifier"' "$SUMMARY" | wc -l | tr -d ' ')"
+testsCount="$({ grep -o '"nodeIdentifier"' "$SUMMARY" || true; } | wc -l | tr -d ' ')"
+if [ "$testsCount" -eq 0 ]; then
+    testsCount="$({ grep -o '"testIdentifier"' "$SUMMARY" || true; } | wc -l | tr -d ' ')"
+fi
 [ "$testsCount" -gt 0 ] || { echo "ERROR: $BUNDLE executed zero tests" >&2; exit 1; }
 echo "Executed $testsCount tests in $BUNDLE"
