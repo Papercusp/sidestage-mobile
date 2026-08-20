@@ -131,6 +131,7 @@ final class LiveEventViewModel {
         if let playbackUrl = event?.playbackUrl {
             player = WhepPlayerController(
                 playbackUrl: playbackUrl,
+                engine: makePlatformWhepEngine(),
                 onPlayback: { [weak self] state in self?.playback = state },
                 onVideoTrack: { [weak self] track in self?.videoTrack = track }
             )

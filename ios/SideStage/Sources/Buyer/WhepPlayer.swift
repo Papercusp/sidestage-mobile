@@ -117,7 +117,7 @@ final class WhepPlayerController {
 
     init(
         playbackUrl: String,
-        engine: WhepEngine? = makePlatformWhepEngine(),
+        engine: WhepEngine?,
         signaling: WhepSignalingProtocol? = try? WhepSignaling(),
         onPlayback: @escaping (WhepPlayback) -> Void,
         onVideoTrack: @escaping (WhepVideoTrack?) -> Void
