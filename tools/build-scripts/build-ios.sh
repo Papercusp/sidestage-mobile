@@ -30,10 +30,13 @@ cargo run --quiet --bin uniffi-bindgen -- generate \
     --config crates/sidestage-bindings/uniffi.toml \
     --language swift \
     --out-dir ios/SideStageCore
+test -f ios/SideStageCore/sidestage.swift
+test -f ios/SideStageCore/sidestageFFI.h
 
 mkdir -p ios/SideStageCore/headers
 mv -f ios/SideStageCore/sidestageFFI.h ios/SideStageCore/headers/
 mv -f ios/SideStageCore/sidestageFFI.modulemap ios/SideStageCore/headers/module.modulemap
+test -f ios/SideStageCore/headers/sidestageFFI.h
 
 rm -rf ios/SideStageCore.xcframework
 xcodebuild -create-xcframework \

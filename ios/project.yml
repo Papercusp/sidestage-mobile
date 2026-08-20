@@ -5,8 +5,8 @@
 #   1. `make ios` from the repository root (creates SideStageCore.xcframework
 #      plus the generated UniFFI Swift source under ios/SideStageCore).
 #   2. `xcodegen generate --spec ios/project.yml` from the repository root
-#      (creates ios/SideStage.xcodeproj).
-#   3. Open ios/SideStage.xcodeproj and run the SideStage scheme.
+#      (creates the ignored SideStage Xcode project).
+#   3. Open the generated project and run the SideStage scheme.
 #
 # SideStageCore is the native Swift boundary around the single shared Rust core.
 # Keep catalog, realtime, cart, and checkout behavior in sidestage-core rather
@@ -52,6 +52,9 @@ targets:
       - path: SideStageCore
         excludes:
           - .gitkeep
+          - sidestage.swift
+          - headers
+      - path: SideStageCore/sidestage.swift
     dependencies:
       - framework: SideStageCore.xcframework
         embed: false

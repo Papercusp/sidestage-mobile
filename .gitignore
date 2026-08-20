@@ -18,6 +18,7 @@
 
 # iOS / Xcode
 /ios/build/
+/ios/SideStage.xcodeproj
 /ios/*.xcodeproj/xcuserdata/
 /ios/*.xcworkspace/xcuserdata/
 
