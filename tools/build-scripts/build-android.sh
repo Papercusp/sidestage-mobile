@@ -5,9 +5,9 @@
 set -euo pipefail
 
 resolve_android_sdk() {
-    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
-    if [ ! -d "$sdk_root" ]; then
-        echo "ERROR: Android SDK not found at $sdk_root; set ANDROID_SDK_ROOT or ANDROID_HOME" >&2
+    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+    if [ -z "$sdk_root" ] || [ ! -d "$sdk_root" ]; then
+        echo "ERROR: Android SDK not found; set ANDROID_SDK_ROOT or ANDROID_HOME" >&2
         return 1
     fi
     ANDROID_SDK_ROOT="$sdk_root"
@@ -101,7 +101,9 @@ verify_packaged_abis() {
 
 verify_16kb_alignment() {
     local apk="$1"
-    local native_root="$REPO_ROOT/android/app/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib"
+    local variant="${2:-release}"
+    local variant_title="${variant^}"
+    local native_root="$REPO_ROOT/android/app/build/intermediates/merged_native_libs/$variant/merge${variant_title}NativeLibs/out/lib"
     local objdump zipalign power so checked=0
     objdump="$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" \
         -path '*/bin/llvm-objdump' -type f -print -quit)"
@@ -148,6 +150,9 @@ if [ -x android/gradlew ]; then
         verify_packaged_abis \
             "$REPO_ROOT/android/app/build/outputs/apk/debug/app-debug.apk" \
             'lib/'
+        verify_16kb_alignment \
+            "$REPO_ROOT/android/app/build/outputs/apk/debug/app-debug.apk" \
+            debug
         echo "==> Debug APK: $REPO_ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
     fi
 else

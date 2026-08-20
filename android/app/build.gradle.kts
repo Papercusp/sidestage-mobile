@@ -32,6 +32,7 @@ android {
         versionCode = 1
         versionName = providers.gradleProperty("papercupReleaseVersion").getOrElse("0.1.0")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
 
         buildConfigField(
             "String",
@@ -74,7 +75,17 @@ android {
         }
     }
 
+    lint {
+        lintConfig = file("lint.xml")
+        abortOnError = true
+        warningsAsErrors = false
+        checkAllWarnings = false
+    }
+
     buildTypes {
+        getByName("debug") {
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+        }
         getByName("release") {
             isMinifyEnabled = true
             signingConfigs.findByName("release")?.also { signingConfig = it }
@@ -102,6 +113,39 @@ android {
 
 tasks.named("preBuild").configure {
     dependsOn(generateUniFfiKotlin)
+}
+
+val releaseSigningInputNames =
+    listOf(
+        "PAPERCUP_RELEASE_KEYSTORE",
+        "PAPERCUP_RELEASE_KEYSTORE_PASSWORD",
+        "PAPERCUP_RELEASE_KEY_ALIAS",
+        "PAPERCUP_RELEASE_KEY_PASSWORD",
+    )
+
+val validateReleaseSigning by
+    tasks.registering {
+        group = "verification"
+        description = "Fail unless every external Android release-signing input is configured."
+        doLast {
+            val values =
+                releaseSigningInputNames.associateWith { name ->
+                    providers.gradleProperty(name).orNull
+                        ?: System.getenv(name)?.takeIf { it.isNotBlank() }
+                }
+            val missing = values.filterValues { it == null }.keys
+            require(missing.isEmpty()) {
+                "Android release signing preflight failed; missing external inputs: ${missing.joinToString(", ")}"
+            }
+            val keystore = file(values.getValue("PAPERCUP_RELEASE_KEYSTORE")!!)
+            require(keystore.isFile) {
+                "Android release signing preflight failed; keystore does not exist: $keystore"
+            }
+        }
+    }
+
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach {
+    dependsOn(validateReleaseSigning)
 }
 
 dependencies {

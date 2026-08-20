@@ -1,5 +1,5 @@
 {
-  "$doc": "SideStage mobile's conformance inputs for papercusp-mobile-base@0.1.0. Paths are repository-relative; no secret values belong here.",
+  "$doc": "SideStage mobile's conformance inputs for the exact papercusp-android-app@0.1.0 closure. Paths are repository-relative; no secret or signing values belong here.",
   "app": {
     "name": "sidestage-mobile",
     "root": "."
@@ -56,7 +56,13 @@
     "portableCommands": [
       {
         "id": "rust-fmt",
-        "command": ["cargo", "fmt", "--all", "--", "--check"]
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ]
       },
       {
         "id": "rust-clippy",
@@ -73,19 +79,260 @@
       },
       {
         "id": "rust-test",
-        "command": ["cargo", "test", "--workspace", "--all-targets"],
+        "command": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--all-targets"
+        ],
         "timeoutMs": 600000
       },
       {
         "id": "binding-smoke",
-        "command": ["make", "bindings-smoke"],
+        "command": [
+          "make",
+          "bindings-smoke"
+        ],
         "timeoutMs": 600000
       },
       {
         "id": "token-drift",
-        "command": ["make", "tokens-check"],
+        "command": [
+          "make",
+          "tokens-check"
+        ],
         "timeoutMs": 600000
       }
     ]
+  },
+  "androidShell": {
+    "namespace": "com.sidestage.mobile",
+    "applicationId": "com.sidestage.mobile",
+    "minSdk": 33,
+    "compileSdk": 36,
+    "targetSdk": 36,
+    "gradleVersion": "8.14.3",
+    "agpVersion": "8.13.2",
+    "kotlinVersion": "2.0.21",
+    "javaVersion": 17,
+    "ndkVersion": "27.0.12077973",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "x86",
+      "x86_64"
+    ],
+    "nativeLibrary": "libsidestage.so",
+    "releaseVersionInput": "PAPERCUP_RELEASE_VERSION",
+    "signingPrefix": "PAPERCUP_RELEASE_",
+    "signingInputNames": [
+      "PAPERCUP_RELEASE_KEYSTORE",
+      "PAPERCUP_RELEASE_KEYSTORE_PASSWORD",
+      "PAPERCUP_RELEASE_KEY_ALIAS",
+      "PAPERCUP_RELEASE_KEY_PASSWORD"
+    ],
+    "debugCleartext": true,
+    "selectedCapabilities": [
+      "media-playback",
+      "local-networking"
+    ],
+    "allowedPermissions": [
+      "android.permission.INTERNET"
+    ],
+    "paths": {
+      "settingsGradle": "android/settings.gradle.kts",
+      "projectGradle": "android/build.gradle.kts",
+      "appGradle": "android/app/build.gradle.kts",
+      "wrapperProperties": "android/gradle/wrapper/gradle-wrapper.properties",
+      "manifest": "android/app/src/main/AndroidManifest.xml",
+      "packageSourceRoot": "android/app/src/main/kotlin/com/sidestage/mobile",
+      "unitTestRoots": [
+        "android/app/src/test/kotlin"
+      ],
+      "instrumentationTestRoots": [
+        "android/app/src/androidTest/kotlin"
+      ],
+      "lintConfig": "android/app/lint.xml",
+      "buildScript": "tools/build-scripts/build-android.sh",
+      "abiVerifier": "tools/build-scripts/verify-android-uniffi-abi.sh",
+      "provenanceScript": "tools/build-scripts/android-release-provenance.sh",
+      "udl": "crates/sidestage-bindings/src/sidestage.udl",
+      "uniffiConfig": "crates/sidestage-bindings/uniffi.toml",
+      "cargoLock": "Cargo.lock",
+      "generatedKotlin": "android/app/src/main/kotlin/uniffi/sidestage/sidestage.kt",
+      "releaseApk": "android/app/build/outputs/apk/release/app-release.apk",
+      "releaseAab": "android/app/build/outputs/bundle/release/app-release.aab",
+      "provenanceFile": "android/app/build/outputs/papercusp-release-provenance.json"
+    },
+    "evidenceDir": "android/app/build/template-checks/android-shell",
+    "assertions": [
+      {
+        "assertionId": "MOB-AND-001",
+        "leg": "toolchain-build",
+        "command": [
+          "bash",
+          "tools/build-scripts/build-android.sh",
+          "debug"
+        ],
+        "timeoutMs": 900000,
+        "hostConstraintPatterns": [
+          "Android SDK not found",
+          "cargo-ndk is required"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-002",
+        "leg": "binding-generation",
+        "command": [
+          "android/gradlew",
+          "-p",
+          "android",
+          ":app:generateUniFfiKotlin"
+        ],
+        "timeoutMs": 600000,
+        "hostConstraintPatterns": [
+          "SDK location not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-003",
+        "leg": "package-abis",
+        "command": [
+          "bash",
+          "tools/build-scripts/build-android.sh",
+          "debug"
+        ],
+        "timeoutMs": 900000,
+        "hostConstraintPatterns": [
+          "Android SDK not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-004",
+        "leg": "uniffi-alignment",
+        "command": [
+          "bash",
+          "tools/build-scripts/build-android.sh",
+          "debug"
+        ],
+        "timeoutMs": 900000,
+        "hostConstraintPatterns": [
+          "llvm-objdump",
+          "zipalign",
+          "Android SDK not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-005",
+        "leg": "lint",
+        "command": [
+          "android/gradlew",
+          "-p",
+          "android",
+          ":app:lintRelease"
+        ],
+        "timeoutMs": 600000,
+        "hostConstraintPatterns": [
+          "SDK location not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-005",
+        "leg": "unit",
+        "command": [
+          "android/gradlew",
+          "-p",
+          "android",
+          ":app:testDebugUnitTest"
+        ],
+        "timeoutMs": 600000,
+        "hostConstraintPatterns": [
+          "SDK location not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-005",
+        "leg": "instrumentation",
+        "command": [
+          "android/gradlew",
+          "-p",
+          "android",
+          ":app:connectedDebugAndroidTest"
+        ],
+        "timeoutMs": 900000,
+        "hostConstraintPatterns": [
+          "No connected devices",
+          "SDK location not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-005",
+        "leg": "manifest-privacy",
+        "command": [
+          "bash",
+          "tools/tests/android-privacy-permissions-test.sh"
+        ],
+        "timeoutMs": 600000,
+        "hostConstraintPatterns": [
+          "SDK location not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-006",
+        "leg": "release-provenance",
+        "command": [
+          "bash",
+          "tools/tests/android-release-provenance-test.sh"
+        ],
+        "timeoutMs": 900000,
+        "hostConstraintPatterns": [
+          "apkanalyzer",
+          "Android SDK not found"
+        ]
+      },
+      {
+        "assertionId": "MOB-AND-006",
+        "leg": "signing-absence",
+        "command": [
+          "android/gradlew",
+          "-p",
+          "android",
+          ":app:validateReleaseSigning"
+        ],
+        "unsetEnv": [
+          "PAPERCUP_RELEASE_KEYSTORE",
+          "PAPERCUP_RELEASE_KEYSTORE_PASSWORD",
+          "PAPERCUP_RELEASE_KEY_ALIAS",
+          "PAPERCUP_RELEASE_KEY_PASSWORD"
+        ],
+        "expectedExit": "nonzero",
+        "expectedOutputPattern": "signing|keystore|unsigned",
+        "timeoutMs": 600000,
+        "hostConstraintPatterns": [
+          "SDK location not found"
+        ]
+      }
+    ]
+  },
+  "composition": {
+    "templateYamls": [
+      "template-manifests/papercusp-android-app.yaml",
+      "template-manifests/papercusp-mobile-base.yaml",
+      "template-manifests/papercusp-android-shell.yaml"
+    ],
+    "decisionPointAnswers": {
+      "papercusp-android-app:android-app-purpose": "SideStage is the official buyer-focused live-commerce Android client; this record supplies the full shared-base and Android-shell closure while preserving SideStage-owned catalog, event, checkout, order, and playback behavior.",
+      "papercusp-mobile-base:product-domain": "Portable commerce models, validation, state transitions, serialization, and network policy live in Rust; Compose owns presentation, navigation, and Android lifecycle.",
+      "papercusp-mobile-base:rust-msrv": "Rust 1.88 is the supported workspace MSRV.",
+      "papercusp-mobile-base:license-and-repository": "MIT, SideStage contributors, and the canonical sidestage-mobile repository metadata remain product-owned.",
+      "papercusp-mobile-base:design-token-source": "design-tokens/mobile.*.tokens.json is the source for deterministic SideStage Kotlin and Swift token outputs.",
+      "papercusp-mobile-base:optional-capabilities": "Media playback and debug local networking are selected product capabilities; credentials, deep links, push, analytics, crash reporting, camera, and microphone are not selected.",
+      "papercusp-mobile-base:runtime-configuration": "Non-secret API base and buyer identity are explicit product configuration, commerce and media provider credentials stay server-side, and signing secrets remain external.",
+      "papercusp-android-shell:android-identity": "Namespace and application ID are com.sidestage.mobile, package sources use com/sidestage/mobile, the launcher name is SideStage, and PAPERCUP_RELEASE_VERSION supplies release versions.",
+      "papercusp-android-shell:android-sdk-floor": "Raise minimum SDK to 33 for the selected product dependencies while keeping compile and target SDK 36.",
+      "papercusp-android-shell:android-local-network": "A debug-only cleartext exception supports the emulator demo API; release defaults to cleartext false.",
+      "papercusp-android-shell:android-capabilities": "The product owns its INTERNET permission, media-playback dependency, and debug endpoint; no unselected permission, service, plugin, or provider credential is added.",
+      "papercusp-android-shell:android-release": "Use external PAPERCUP_RELEASE_* signing inputs, publish APK and AAB together, bind PAPERCUP_RELEASE_VERSION to atomic SHA-256 provenance, and reject publish preflight when signing is absent."
+    }
   }
 }

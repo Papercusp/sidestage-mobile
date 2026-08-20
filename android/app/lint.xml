@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- UniFFI owns generated Kotlin; lint product-authored source and the assembled app. -->
+    <issue id="NewApi">
+        <ignore path="src/main/kotlin/uniffi/**" />
+    </issue>
+</lint>
