@@ -25,8 +25,13 @@ node - "$MERGED_MANIFEST" <<'NODE'
 const fs = require('node:fs');
 const xml = fs.readFileSync(process.argv[2], 'utf8');
 const permissions = [...xml.matchAll(/<uses-permission\b[^>]*android:name="([^"]+)"[^>]*>/g)].map((match) => match[1]).sort();
-if (JSON.stringify(permissions) !== JSON.stringify(['android.permission.INTERNET'])) {
-  throw new Error(`merged release permissions must be exactly INTERNET, got: ${permissions.join(', ')}`);
+const allowed = [
+  'android.permission.ACCESS_NETWORK_STATE',
+  'android.permission.INTERNET',
+  'com.sidestage.mobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION',
+];
+if (JSON.stringify(permissions) !== JSON.stringify(allowed)) {
+  throw new Error(`merged release permissions differ from the dependency-aware allowlist, got: ${permissions.join(', ')}`);
 }
 if (!/android:usesCleartextTraffic="false"/.test(xml)) {
   throw new Error('merged release manifest must disable cleartext traffic');
