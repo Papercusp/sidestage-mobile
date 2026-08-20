@@ -1,0 +1,91 @@
+{
+  "$doc": "SideStage mobile's conformance inputs for papercusp-mobile-base@0.1.0. Paths are repository-relative; no secret values belong here.",
+  "app": {
+    "name": "sidestage-mobile",
+    "root": "."
+  },
+  "mobileBase": {
+    "rustMsrv": "1.88",
+    "rootCargo": "Cargo.toml",
+    "cargoLock": "Cargo.lock",
+    "crateManifests": [
+      "crates/sidestage-core/Cargo.toml",
+      "crates/sidestage-bindings/Cargo.toml",
+      "crates/sidestage-cli/Cargo.toml"
+    ],
+    "udl": "crates/sidestage-bindings/src/sidestage.udl",
+    "uniffiConfig": "crates/sidestage-bindings/uniffi.toml",
+    "bindgen": "crates/sidestage-bindings/uniffi-bindgen.rs",
+    "tokenSource": "design-tokens/mobile.primitives.tokens.json",
+    "generatedTokenFiles": [
+      "android/app/src/main/kotlin/com/sidestage/mobile/theme/SideStageTokens.kt",
+      "ios/SideStage/Sources/Generated/SideStageTokens.swift"
+    ],
+    "requiredPaths": [
+      "Makefile",
+      "android",
+      "ios",
+      "tools",
+      "design-tokens"
+    ],
+    "scanRoots": [
+      "crates",
+      "android",
+      "ios",
+      "design-tokens",
+      "tools"
+    ],
+    "forbiddenTokens": [
+      "Papercusp",
+      "Papercup",
+      "com.example",
+      "example.invalid",
+      "mobile_app",
+      "MobileApp",
+      "__TEMPLATE_"
+    ],
+    "allowlistedFiles": [
+      "tools/tests/android-release-provenance-test.sh"
+    ],
+    "secretPathPatterns": [
+      "(^|/)local\\.properties$",
+      "(^|/)google-services\\.json$",
+      "(^|/)GoogleService-Info\\.plist$",
+      "\\.(jks|keystore|p12|mobileprovision)$"
+    ],
+    "portableCommands": [
+      {
+        "id": "rust-fmt",
+        "command": ["cargo", "fmt", "--all", "--", "--check"]
+      },
+      {
+        "id": "rust-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "timeoutMs": 600000
+      },
+      {
+        "id": "rust-test",
+        "command": ["cargo", "test", "--workspace", "--all-targets"],
+        "timeoutMs": 600000
+      },
+      {
+        "id": "binding-smoke",
+        "command": ["make", "bindings-smoke"],
+        "timeoutMs": 600000
+      },
+      {
+        "id": "token-drift",
+        "command": ["make", "tokens-check"],
+        "timeoutMs": 600000
+      }
+    ]
+  }
+}

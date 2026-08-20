@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: MIT
 
-.PHONY: help build-rust test check fmt fmt-check clippy bindings-smoke bindings-swift-smoke bindings-kotlin bindings-swift android android-release test-android-release-provenance ios scaffold-check clean
+.PHONY: help build-rust test check fmt fmt-check clippy bindings-smoke bindings-swift-smoke bindings-kotlin bindings-swift android android-release test-android-release-provenance ios scaffold-check tokens-check clean
 
 help:
 	@echo "Targets:"
 	@echo "  make build-rust     — build the shared Rust workspace"
 	@echo "  make test           — run all Rust tests"
 	@echo "  make check          — scaffold shape + fmt + clippy + tests"
+	@echo "  make tokens-check   — verify generated Swift design tokens are current"
 	@echo "  make bindings-smoke — run the host-side UniFFI boundary smoke (from Rust)"
 	@echo "  make bindings-swift-smoke — run the SWIFT host boundary smoke (macOS only)"
 	@echo "  make bindings-kotlin — generate UniFFI Kotlin into android/app/src/main/kotlin"
@@ -34,7 +35,10 @@ clippy:
 scaffold-check:
 	./tools/build-scripts/verify-scaffold.sh
 
-check: scaffold-check fmt-check clippy test bindings-smoke test-android-release-provenance
+tokens-check:
+	ruby tools/build-scripts/generate-swift-design-tokens.rb --check
+
+check: scaffold-check tokens-check fmt-check clippy test bindings-smoke test-android-release-provenance
 
 bindings-smoke:
 	cargo run --quiet -p sidestage-bindings --bin sidestage-bindings-smoke

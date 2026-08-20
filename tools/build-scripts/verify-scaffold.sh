@@ -50,7 +50,6 @@ grep -q 'crates/sidestage-cli' Cargo.toml
 grep -q 'name = "sidestage"' crates/sidestage-bindings/Cargo.toml
 grep -q 'cdylib_name = "sidestage"' crates/sidestage-bindings/uniffi.toml
 test -x android/gradlew || { echo "ERROR: android/gradlew is missing or not executable" >&2; exit 1; }
-ruby tools/build-scripts/generate-swift-design-tokens.rb --check
 grep -q 'BUYER("Buyer")' android/app/src/main/kotlin/com/sidestage/mobile/navigation/NavigationContract.kt
 grep -q 'ORDERS("Orders")' android/app/src/main/kotlin/com/sidestage/mobile/navigation/NavigationContract.kt
 if grep -Eq '(SELLER|HISTORY|CONFIG|TEST)\(' android/app/src/main/kotlin/com/sidestage/mobile/navigation/NavigationContract.kt; then
