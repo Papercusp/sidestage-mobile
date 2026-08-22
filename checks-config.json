@@ -153,6 +153,7 @@
         "android/app/src/androidTest/kotlin"
       ],
       "lintConfig": "android/app/lint.xml",
+      "proguardRules": "android/app/proguard-rules.pro",
       "buildScript": "tools/build-scripts/build-android.sh",
       "abiVerifier": "tools/build-scripts/verify-android-uniffi-abi.sh",
       "provenanceScript": "tools/build-scripts/android-release-provenance.sh",
