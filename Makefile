@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 
-.PHONY: help build-rust test check fmt fmt-check clippy bindings-smoke bindings-swift-smoke bindings-kotlin bindings-swift android android-release test-android-release-provenance ios scaffold-check tokens-check clean
+.PHONY: help build-rust test check fmt fmt-check clippy bindings-smoke bindings-swift-smoke bindings-kotlin bindings-swift android android-release test-android-release-provenance test-android-sdk-discovery ios scaffold-check tokens-check clean
 
 help:
 	@echo "Targets:"
@@ -70,6 +70,9 @@ android-release: bindings-kotlin
 
 test-android-release-provenance:
 	./tools/tests/android-release-provenance-test.sh
+
+test-android-sdk-discovery:
+	./tools/tests/android-sdk-discovery-test.sh
 
 ios:
 	./tools/build-scripts/build-ios.sh
