@@ -6,8 +6,25 @@ set -euo pipefail
 
 resolve_android_sdk() {
     local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+    if [ -z "$sdk_root" ]; then
+        local candidate
+        local candidates=()
+        if [ -n "${HOME:-}" ]; then
+            candidates+=("$HOME/Android/Sdk" "$HOME/Library/Android/sdk")
+        fi
+        if [ -n "${LOCALAPPDATA:-}" ]; then
+            candidates+=("$LOCALAPPDATA/Android/Sdk")
+        fi
+        candidates+=(/opt/android-sdk /usr/lib/android-sdk)
+        for candidate in "${candidates[@]}"; do
+            if [ -d "$candidate" ]; then
+                sdk_root="$candidate"
+                break
+            fi
+        done
+    fi
     if [ -z "$sdk_root" ] || [ ! -d "$sdk_root" ]; then
-        echo "ERROR: Android SDK not found; set ANDROID_SDK_ROOT or ANDROID_HOME" >&2
+        echo "ERROR: Android SDK not found; set ANDROID_SDK_ROOT or ANDROID_HOME or install it in a standard location" >&2
         return 1
     fi
     ANDROID_SDK_ROOT="$sdk_root"
