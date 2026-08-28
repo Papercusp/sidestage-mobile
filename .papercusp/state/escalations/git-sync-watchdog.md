@@ -3,7 +3,7 @@ authority: null
 body_embedding_mode: "gemma"
 body_tsv: ""
 escalation: null
-mtime_ms: 1787889171504
+mtime_ms: 1787905205425
 phase: "git-sync-watchdog"
 risk_tier: null
 supervisor_notes: null
